@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Municipal Bridge Dashboard</title>
-    <meta name="description" content="BRIDGE_DASHBOARD_SPEC_JA.md に準拠した橋梁ダッシュボード実装" />
+    <meta name="description" content="自治体の橋梁データをブラウザだけで可視化できるダッシュボード" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -40,27 +40,9 @@
           <p class="eyebrow">Municipal Bridge Dashboard</p>
           <h1>自治体向け橋梁ダッシュボード</h1>
           <p class="lead">
-            docs/BRIDGE_DASHBOARD_SPEC_JA.md で定義された要件（CSV 取込 / ストック構成 / 判定区分 / 橋長階級 /
-            架設年度 / 地図）をブラウザのみで満たすクライアントサイドアプリです。複数自治体 CSV を読み込み、フィルタをかけながら
-            KPI・グラフ・地図を確認できます。
+            自治体ごとの橋梁施設一覧 CSV を読み込むだけで、ストック構成・健全度・橋長や架設年度の傾向、地図上での配置をまとめて確認できる
+            クライアントサイドアプリです。データはブラウザ内で完結し、複数自治体の状況を安全に比較できます。
           </p>
-        </div>
-        <div class="header-meta">
-          <span class="tag tag-accent">実装版 v1</span>
-          <div class="status-group">
-            <div class="status-item">
-              <p class="status-label">参照仕様</p>
-              <p class="status-value">docs/BRIDGE_DASHBOARD_SPEC_JA.md</p>
-            </div>
-            <div class="status-item">
-              <p class="status-label">CSV 文字コード</p>
-              <p class="status-value">Shift_JIS / cp932（想定）</p>
-            </div>
-            <div class="status-item">
-              <p class="status-label">ホスティング</p>
-              <p class="status-value">GitHub Pages（ルート直下）</p>
-            </div>
-          </div>
         </div>
       </header>
 
@@ -72,8 +54,7 @@
               <h2 id="csv-loader-heading">CSV 読み込み</h2>
             </div>
             <p class="panel-description">
-              仕様 4.1 の要件に基づき、複数 CSV を一括/追加で読み込めるドロップゾーンとファイル選択を提供します。必須列（仕様
-              3.1）が欠落している場合はスキップし、エラーログに記録します。
+              xROAD の橋梁リスト（77号調査）から書き出した CSV をここで読み込みます。複数ファイルをまとめて追加すると一気に比較できます。
             </p>
           </div>
           <div class="loader-controls">
@@ -81,40 +62,14 @@
               <input type="file" accept=".csv,text/csv" multiple data-file-input />
               <span>CSV ファイルを選択</span>
             </label>
-            <a class="ghost-button" href="docs/BRIDGE_DASHBOARD_SPEC_JA.md" target="_blank" rel="noopener"
-              >仕様ドキュメントを開く</a
-            >
           </div>
           <div class="dropzone" data-dropzone tabindex="0">
             <div class="dropzone-inner">
-              <p class="dropzone-title">ドラッグ & ドロップで CSV を追加</p>
-              <ul class="dropzone-guides">
-                <li>1 ファイル = 1 自治体 dataset。csv_example に含まれる Shift_JIS サンプルを想定。</li>
-                <li>ヘッダー名は仕様 3.1 の列が必須。未対応列は自動的に無視（今後の拡張対象）。</li>
-                <li>CSV の内容はブラウザ内でのみ処理し、外部サーバには送信しません。</li>
-              </ul>
+              <p class="dropzone-title">ドラッグ & ドロップでも追加できます</p>
               <p class="dropzone-hint">
-                ※ 読み込み状況・エラーは「処理ログ」に追記されます。成功すると dataset & グラフが即時更新されます。
+                1 ファイルに 1 自治体をまとめた CSV を推奨します。読み込みはブラウザ内で完結し、完了するとすぐにグラフへ反映されます。
               </p>
             </div>
-          </div>
-          <div class="upload-feedback" data-upload-feedback>
-            <p>まだファイルは読み込まれていません。csv_example 直下の CSV を指定してください。</p>
-          </div>
-        </section>
-
-        <section class="panel card log-panel" aria-labelledby="log-heading">
-          <div class="panel-header">
-            <div>
-              <p class="eyebrow">STEP 1-1</p>
-              <h2 id="log-heading">処理ログ / エラー</h2>
-            </div>
-            <div class="log-actions">
-              <button type="button" class="ghost-button" data-clear-log>ログをすべてクリア</button>
-            </div>
-          </div>
-          <div class="log-list" data-log-list aria-live="polite">
-            <p class="log-empty">読み込みイベントはまだありません。</p>
           </div>
         </section>
 
@@ -142,7 +97,7 @@
                 <h2 id="filter-heading">フィルタ & 表示設定</h2>
               </div>
               <p class="panel-description">
-                仕様 4.3 に沿って、橋種 / 点検判定区分 / チャート表示設定を切り替えられます。未選択カテゴリは即時に可視化対象から除外されます。
+                橋種や点検判定区分、チャートの集計単位を切り替えて、知りたい条件だけに絞り込めます。
               </p>
             </div>
             <div class="filter-section">
@@ -169,7 +124,7 @@
                 <span>50</span>
               </div>
               <p class="range-hint">
-                現在: <strong data-length-bin-label>10 m</strong> / 仕様 5.4 の確定前は 10 m 案をデフォルトとしています。
+                現在: <strong data-length-bin-label>10 m</strong> / 10 m 刻みは橋長分布を把握する際の目安です。
               </p>
             </div>
           </article>
@@ -204,7 +159,7 @@
           <article class="panel card chart-card" aria-labelledby="stock-chart-title">
             <div class="panel-header">
               <div>
-                <p class="eyebrow">4.2.2</p>
+                <p class="eyebrow">橋梁ストック</p>
                 <h3 id="stock-chart-title">橋種別ストック構成</h3>
               </div>
               <div class="chart-controls">
@@ -232,7 +187,7 @@
           <article class="panel card chart-card" aria-labelledby="rating-chart-title">
             <div class="panel-header">
               <div>
-                <p class="eyebrow">4.2.3</p>
+                <p class="eyebrow">健全度</p>
                 <h3 id="rating-chart-title">点検判定区分の分布</h3>
               </div>
               <div class="chart-controls">
@@ -247,7 +202,7 @@
           <article class="panel card chart-card" aria-labelledby="length-chart-title">
             <div class="panel-header">
               <div>
-                <p class="eyebrow">4.2.4</p>
+                <p class="eyebrow">延長分布</p>
                 <h3 id="length-chart-title">橋長階級ヒストグラム</h3>
               </div>
               <div class="chart-controls">
@@ -262,7 +217,7 @@
           <article class="panel card chart-card" aria-labelledby="year-chart-title">
             <div class="panel-header">
               <div>
-                <p class="eyebrow">4.2.5</p>
+                <p class="eyebrow">架設年</p>
                 <h3 id="year-chart-title">架設年度分布</h3>
               </div>
               <div class="chart-controls">
@@ -284,12 +239,11 @@
         <section class="panel card map-panel" aria-labelledby="map-heading">
           <div class="panel-header">
             <div>
-              <p class="eyebrow">4.2.6</p>
-              <h2 id="map-heading">地理的分布（Leaflet）</h2>
+              <p class="eyebrow">ロケーション</p>
+              <h2 id="map-heading">地理的分布</h2>
             </div>
             <p class="panel-description">
-              Leaflet + OpenStreetMap を利用し、点検判定区分（色）×橋種（形状）で橋梁をプロットします。自治体ごとの表示切替は dataset
-              カードから行います。
+              地図上に橋梁をプロットし、判定区分は色、橋種は形状で表現します。自治体ごとの表示切替は dataset カードから行えます。
             </p>
           </div>
           <div class="map-canvas" id="map" role="img" aria-label="橋梁マップ"></div>
@@ -323,21 +277,21 @@
         <section class="panel card notes-panel" aria-labelledby="notes-heading">
           <div class="panel-header">
             <div>
-              <p class="eyebrow">参考</p>
-              <h2 id="notes-heading">作業メモ / TODO</h2>
+              <p class="eyebrow">ガイダンス</p>
+              <h2 id="notes-heading">ご利用上の注意</h2>
             </div>
           </div>
           <ul class="notes-list">
-            <li>仕様 5.1 の CSV 詳細（改行/区切り）は現状サンプル準拠。追加形式は今後拡張予定。</li>
-            <li>橋種マッピング辞書（仕様 3.3）は js/main.js の `bridgeTypeMapping` で管理。</li>
-            <li>同一 CSV 再読込の扱い（仕様 5.3）は現状「別 dataset として追加」。ID 重複検知は TODO。</li>
-            <li>緯度経度欠損橋梁は地図に描画せず、件数を map-info に表示。</li>
+            <li>CSV はブラウザ内でのみ扱い、ページを閉じると読み込み内容はリセットされます。</li>
+            <li>同じファイルを再度読み込むと別 dataset として追加されます。重複が不要な場合は dataset リストで OFF にしてください。</li>
+            <li>緯度・経度が入力されていない橋梁は地図には表示されませんが、グラフ集計には含まれます。</li>
+            <li>橋種や判定区分の表記揺れは可能な範囲で自動調整されますが、正確な値を入力するほど結果が安定します。</li>
           </ul>
         </section>
       </main>
 
       <footer class="app-footer">
-        <p>Municipal Bridge Dashboard — based on BRIDGE_DASHBOARD_SPEC_JA.md</p>
+        <p>Municipal Bridge Dashboard — ローカル CSV を安全に可視化</p>
       </footer>
     </div>
   </body>
