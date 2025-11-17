@@ -38,10 +38,10 @@
 
   const INSPECTION_LEVELS = ["I", "II", "III", "IV", "UNKNOWN"];
   const INSPECTION_COLOR_MAP = {
-    I: "#2dd4bf",
-    II: "#22d3ee",
+    I: "#2563eb",
+    II: "#16a34a",
     III: "#facc15",
-    IV: "#f87171",
+    IV: "#dc2626",
     UNKNOWN: "#9ca3af",
   };
 
@@ -730,8 +730,8 @@
     return window.L.divIcon({
       className: "bridge-marker-wrapper",
       html: `<span class="bridge-marker ${shapeClass}" style="background-color:${color}"></span>`,
-      iconSize: [18, 18],
-      iconAnchor: [9, 9],
+      iconSize: [24, 24],
+      iconAnchor: [12, 12],
     });
   }
 
