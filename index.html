@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Municipal Bridge Dashboard</title>
+    <meta name="description" content="BRIDGE_DASHBOARD_SPEC_JA.md に準拠した橋梁ダッシュボード実装" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230068d6'/%3E%3Cpath d='M8 21h16v-2H8zm0-4h16v-2H8zm0-4h16V11H8z' fill='white'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="css/styles.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+    />
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+      defer
+    ></script>
+    <script src="js/main.js" defer></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="app-header">
+        <div class="header-primary">
+          <p class="eyebrow">Municipal Bridge Dashboard</p>
+          <h1>自治体向け橋梁ダッシュボード</h1>
+          <p class="lead">
+            docs/BRIDGE_DASHBOARD_SPEC_JA.md で定義された要件（CSV 取込 / ストック構成 / 判定区分 / 橋長階級 /
+            架設年度 / 地図）をブラウザのみで満たすクライアントサイドアプリです。複数自治体 CSV を読み込み、フィルタをかけながら
+            KPI・グラフ・地図を確認できます。
+          </p>
+        </div>
+        <div class="header-meta">
+          <span class="tag tag-accent">実装版 v1</span>
+          <div class="status-group">
+            <div class="status-item">
+              <p class="status-label">参照仕様</p>
+              <p class="status-value">docs/BRIDGE_DASHBOARD_SPEC_JA.md</p>
+            </div>
+            <div class="status-item">
+              <p class="status-label">CSV 文字コード</p>
+              <p class="status-value">Shift_JIS / cp932（想定）</p>
+            </div>
+            <div class="status-item">
+              <p class="status-label">ホスティング</p>
+              <p class="status-value">GitHub Pages（ルート直下）</p>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main class="app-main">
+        <section class="panel card loader-panel" aria-labelledby="csv-loader-heading">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">STEP 1</p>
+              <h2 id="csv-loader-heading">CSV 読み込み</h2>
+            </div>
+            <p class="panel-description">
+              仕様 4.1 の要件に基づき、複数 CSV を一括/追加で読み込めるドロップゾーンとファイル選択を提供します。必須列（仕様
+              3.1）が欠落している場合はスキップし、エラーログに記録します。
+            </p>
+          </div>
+          <div class="loader-controls">
+            <label class="file-input-button">
+              <input type="file" accept=".csv,text/csv" multiple data-file-input />
+              <span>CSV ファイルを選択</span>
+            </label>
+            <a class="ghost-button" href="docs/BRIDGE_DASHBOARD_SPEC_JA.md" target="_blank" rel="noopener"
+              >仕様ドキュメントを開く</a
+            >
+          </div>
+          <div class="dropzone" data-dropzone tabindex="0">
+            <div class="dropzone-inner">
+              <p class="dropzone-title">ドラッグ & ドロップで CSV を追加</p>
+              <ul class="dropzone-guides">
+                <li>1 ファイル = 1 自治体 dataset。csv_example に含まれる Shift_JIS サンプルを想定。</li>
+                <li>ヘッダー名は仕様 3.1 の列が必須。未対応列は自動的に無視（今後の拡張対象）。</li>
+                <li>CSV の内容はブラウザ内でのみ処理し、外部サーバには送信しません。</li>
+              </ul>
+              <p class="dropzone-hint">
+                ※ 読み込み状況・エラーは「処理ログ」に追記されます。成功すると dataset & グラフが即時更新されます。
+              </p>
+            </div>
+          </div>
+          <div class="upload-feedback" data-upload-feedback>
+            <p>まだファイルは読み込まれていません。csv_example 直下の CSV を指定してください。</p>
+          </div>
+        </section>
+
+        <section class="panel card log-panel" aria-labelledby="log-heading">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">STEP 1-1</p>
+              <h2 id="log-heading">処理ログ / エラー</h2>
+            </div>
+            <div class="log-actions">
+              <button type="button" class="ghost-button" data-clear-log>ログをすべてクリア</button>
+            </div>
+          </div>
+          <div class="log-list" data-log-list aria-live="polite">
+            <p class="log-empty">読み込みイベントはまだありません。</p>
+          </div>
+        </section>
+
+        <section class="panel-row">
+          <article class="panel card dataset-panel" aria-labelledby="dataset-heading">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">STEP 2</p>
+                <h2 id="dataset-heading">読み込み済み dataset</h2>
+              </div>
+              <p class="panel-description">
+                ファイル名、自治体名、橋梁数、延長、点検進捗を確認し、ON/OFF を切り替えられます。切り替えはチャート・地図にも反映されます。
+              </p>
+            </div>
+            <p class="dataset-empty" data-dataset-empty>
+              dataset はまだありません。CSV を取り込むとここに一覧が表示されます。
+            </p>
+            <ul class="dataset-list" data-dataset-list aria-live="polite"></ul>
+          </article>
+
+          <article class="panel card filter-panel" aria-labelledby="filter-heading">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">STEP 3</p>
+                <h2 id="filter-heading">フィルタ & 表示設定</h2>
+              </div>
+              <p class="panel-description">
+                仕様 4.3 に沿って、橋種 / 点検判定区分 / チャート表示設定を切り替えられます。未選択カテゴリは即時に可視化対象から除外されます。
+              </p>
+            </div>
+            <div class="filter-section">
+              <p class="filter-label">橋種カテゴリ</p>
+              <div class="chip-group" role="group" aria-label="橋種フィルタ" data-filter-bridge-types></div>
+            </div>
+            <div class="filter-section">
+              <p class="filter-label">点検判定区分</p>
+              <div class="chip-group" role="group" aria-label="点検判定フィルタ" data-filter-inspections></div>
+            </div>
+            <div class="filter-section">
+              <p class="filter-label">橋長階級（ヒストグラムの階級幅）</p>
+              <div class="range-display">
+                <span>5</span>
+                <input
+                  type="range"
+                  min="5"
+                  max="50"
+                  step="5"
+                  value="10"
+                  data-length-bin-range
+                  aria-label="橋長階級幅"
+                />
+                <span>50</span>
+              </div>
+              <p class="range-hint">
+                現在: <strong data-length-bin-label>10 m</strong> / 仕様 5.4 の確定前は 10 m 案をデフォルトとしています。
+              </p>
+            </div>
+          </article>
+        </section>
+
+        <section class="panel card kpi-panel" aria-label="KPI ハイライト">
+          <div class="kpi-grid">
+            <div class="kpi-card">
+              <p class="kpi-label">アクティブ dataset</p>
+              <p class="kpi-value" data-kpi="datasets">0</p>
+              <p class="kpi-hint">読み込み済み dataset のうち ON になっている件数</p>
+            </div>
+            <div class="kpi-card">
+              <p class="kpi-label">橋梁総数</p>
+              <p class="kpi-value" data-kpi="bridges">0</p>
+              <p class="kpi-hint">フィルタ後の橋梁数</p>
+            </div>
+            <div class="kpi-card">
+              <p class="kpi-label">総延長 (km)</p>
+              <p class="kpi-value" data-kpi="length">0.0</p>
+              <p class="kpi-hint">橋長(m) を km に換算した合計</p>
+            </div>
+            <div class="kpi-card">
+              <p class="kpi-label">要注視（III/IV）</p>
+              <p class="kpi-value" data-kpi="flagged">0</p>
+              <p class="kpi-hint">判定区分 III / IV に該当する橋梁数</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="chart-grid" aria-label="グラフエリア">
+          <article class="panel card chart-card" aria-labelledby="stock-chart-title">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">4.2.2</p>
+                <h3 id="stock-chart-title">橋種別ストック構成</h3>
+              </div>
+              <div class="chart-controls">
+                <label class="select-label">
+                  指標:
+                  <select data-stock-mode>
+                    <option value="count">橋梁数</option>
+                    <option value="length">総延長</option>
+                  </select>
+                </label>
+                <label class="select-label">
+                  集計:
+                  <select data-stock-scope>
+                    <option value="bridgeType">橋種別</option>
+                    <option value="dataset">自治体別</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+            <div class="chart-placeholder">
+              <canvas id="chart-stock" aria-label="橋種別ストック構成"></canvas>
+            </div>
+          </article>
+
+          <article class="panel card chart-card" aria-labelledby="rating-chart-title">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">4.2.3</p>
+                <h3 id="rating-chart-title">点検判定区分の分布</h3>
+              </div>
+              <div class="chart-controls">
+                <span class="tag tag-outline">I / II / III / IV / UNKNOWN</span>
+              </div>
+            </div>
+            <div class="chart-placeholder">
+              <canvas id="chart-rating" aria-label="点検判定区分の分布"></canvas>
+            </div>
+          </article>
+
+          <article class="panel card chart-card" aria-labelledby="length-chart-title">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">4.2.4</p>
+                <h3 id="length-chart-title">橋長階級ヒストグラム</h3>
+              </div>
+              <div class="chart-controls">
+                <span class="tag">橋種フィルタ連動</span>
+              </div>
+            </div>
+            <div class="chart-placeholder">
+              <canvas id="chart-length" aria-label="橋長階級ヒストグラム"></canvas>
+            </div>
+          </article>
+
+          <article class="panel card chart-card" aria-labelledby="year-chart-title">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">4.2.5</p>
+                <h3 id="year-chart-title">架設年度分布</h3>
+              </div>
+              <div class="chart-controls">
+                <label class="select-label">
+                  粒度:
+                  <select data-year-grouping>
+                    <option value="decade">10 年階級</option>
+                    <option value="year">1 年</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+            <div class="chart-placeholder">
+              <canvas id="chart-year" aria-label="架設年度分布"></canvas>
+            </div>
+          </article>
+        </section>
+
+        <section class="panel card map-panel" aria-labelledby="map-heading">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">4.2.6</p>
+              <h2 id="map-heading">地理的分布（Leaflet）</h2>
+            </div>
+            <p class="panel-description">
+              Leaflet + OpenStreetMap を利用し、点検判定区分（色）×橋種（形状）で橋梁をプロットします。自治体ごとの表示切替は dataset
+              カードから行います。
+            </p>
+          </div>
+          <div class="map-canvas" id="map" role="img" aria-label="橋梁マップ"></div>
+          <p class="map-info">
+            表示中の橋梁: <strong data-map-count>0</strong> 件 /
+            緯度経度欠損: <strong data-map-missing>0</strong> 件
+          </p>
+          <div class="map-legends">
+            <div>
+              <p class="legend-title">点検判定区分</p>
+              <ul class="legend-list">
+                <li><span class="legend-swatch swatch-i"></span>I（健全）</li>
+                <li><span class="legend-swatch swatch-ii"></span>II（予防保全）</li>
+                <li><span class="legend-swatch swatch-iii"></span>III（早期措置）</li>
+                <li><span class="legend-swatch swatch-iv"></span>IV（緊急措置）</li>
+                <li><span class="legend-swatch swatch-unknown"></span>UNKNOWN</li>
+              </ul>
+            </div>
+            <div>
+              <p class="legend-title">橋種カテゴリ</p>
+              <ul class="legend-list">
+                <li><span class="legend-shape shape-pc"></span>PC 橋</li>
+                <li><span class="legend-shape shape-rc"></span>RC 橋</li>
+                <li><span class="legend-shape shape-steel"></span>鋼橋</li>
+                <li><span class="legend-shape shape-other"></span>その他</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel card notes-panel" aria-labelledby="notes-heading">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">参考</p>
+              <h2 id="notes-heading">作業メモ / TODO</h2>
+            </div>
+          </div>
+          <ul class="notes-list">
+            <li>仕様 5.1 の CSV 詳細（改行/区切り）は現状サンプル準拠。追加形式は今後拡張予定。</li>
+            <li>橋種マッピング辞書（仕様 3.3）は js/main.js の `bridgeTypeMapping` で管理。</li>
+            <li>同一 CSV 再読込の扱い（仕様 5.3）は現状「別 dataset として追加」。ID 重複検知は TODO。</li>
+            <li>緯度経度欠損橋梁は地図に描画せず、件数を map-info に表示。</li>
+          </ul>
+        </section>
+      </main>
+
+      <footer class="app-footer">
+        <p>Municipal Bridge Dashboard — based on BRIDGE_DASHBOARD_SPEC_JA.md</p>
+      </footer>
+    </div>
+  </body>
+</html>
