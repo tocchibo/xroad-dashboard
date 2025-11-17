@@ -245,6 +245,25 @@
             <p class="panel-description">
               地図上に橋梁をプロットし、判定区分は色、橋種は形状で表現します。自治体ごとの表示切替は dataset カードから行えます。
             </p>
+            <div class="map-controls" aria-label="地図のプロット表示設定">
+              <p class="map-control-label">プロットサイズ</p>
+              <div class="range-display">
+                <span>小</span>
+                <input
+                  type="range"
+                  min="0.3"
+                  max="1"
+                  step="0.05"
+                  value="1"
+                  data-marker-size-range
+                  aria-label="地図上のマーカーサイズ"
+                />
+                <span>大</span>
+              </div>
+              <p class="range-hint">
+                現在: <strong data-marker-size-label>100%</strong> / 30%〜100% の範囲でズーム倍率や密度に応じた見やすさを確保できます。
+              </p>
+            </div>
           </div>
           <div class="map-canvas" id="map" role="img" aria-label="橋梁マップ"></div>
           <p class="map-info">

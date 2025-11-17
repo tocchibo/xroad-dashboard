@@ -77,6 +77,7 @@
     forceFitMap: false,
     prevMapCount: 0,
     lastUploadSummaries: [],
+    mapMarkerScale: 1,
   };
 
   const elements = {
@@ -102,6 +103,8 @@
     },
     mapCount: document.querySelector("[data-map-count]"),
     mapMissing: document.querySelector("[data-map-missing]"),
+    mapSizeRange: document.querySelector("[data-marker-size-range]"),
+    mapSizeLabel: document.querySelector("[data-marker-size-label]"),
   };
 
   init();
@@ -110,6 +113,7 @@
     buildFilterChips();
     bindRangeControl();
     bindSelectControls();
+    bindMapControls();
     bindDropzone();
     bindLogClear();
     initCharts();
@@ -174,6 +178,27 @@
     });
     state.filters.lengthBinSize = Number(range.value) || 10;
     updateLabel();
+  }
+
+  function bindMapControls() {
+    const range = elements.mapSizeRange;
+    if (!range) return;
+    const clamp = (value) => Math.min(Math.max(value, 0.3), 1);
+    const updateLabel = () => {
+      if (elements.mapSizeLabel) {
+        elements.mapSizeLabel.textContent = `${Math.round(state.mapMarkerScale * 100)}%`;
+      }
+    };
+    const applyValue = (value) => {
+      if (!Number.isFinite(value)) return;
+      state.mapMarkerScale = clamp(value);
+      updateLabel();
+      updateMap();
+    };
+    range.addEventListener("input", (event) => {
+      applyValue(Number(event.currentTarget.value));
+    });
+    applyValue(Number(range.value) || 1);
   }
 
   function bindSelectControls() {
@@ -727,11 +752,16 @@
     const grade = record.inspectionLevel || "UNKNOWN";
     const color = INSPECTION_COLOR_MAP[grade] || INSPECTION_COLOR_MAP.UNKNOWN;
     const shapeClass = `marker-shape-${getBridgeTypeKey(record.bridgeType)}`;
+    const scale = state.mapMarkerScale && Number.isFinite(state.mapMarkerScale) ? state.mapMarkerScale : 1;
+    const baseSize = 22;
+    const size = Math.max(12, Math.round(baseSize * scale));
+    const anchor = Math.round(size / 2);
+    const style = `background-color:${color};width:${size}px;height:${size}px;`;
     return window.L.divIcon({
       className: "bridge-marker-wrapper",
-      html: `<span class="bridge-marker ${shapeClass}" style="background-color:${color}"></span>`,
-      iconSize: [24, 24],
-      iconAnchor: [12, 12],
+      html: `<span class="bridge-marker ${shapeClass}" style="${style}"></span>`,
+      iconSize: [size, size],
+      iconAnchor: [anchor, anchor],
     });
   }
 
