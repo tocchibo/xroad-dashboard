@@ -70,6 +70,7 @@
                 1 ファイルに 1 自治体をまとめた CSV を推奨します。読み込みはブラウザ内で完結し、完了するとすぐにグラフへ反映されます。
               </p>
             </div>
+            
           </div>
         </section>
 
@@ -127,6 +128,14 @@
                 現在: <strong data-length-bin-label>10 m</strong> / 10 m 刻みは橋長分布を把握する際の目安です。
               </p>
             </div>
+            <div class="filter-section filter-section-sub">
+              <p class="filter-label">表示設定</p>
+              <label class="checkbox-control">
+                <input type="checkbox" data-filter-exclude-culvert />
+                <span>カルバートを除く</span>
+              </label>
+              <p class="filter-note">溝橋・カルバート形式の橋梁を全体集計から除外します。</p>
+            </div>
           </article>
         </section>
 
@@ -177,6 +186,7 @@
                     <option value="dataset">自治体別</option>
                   </select>
                 </label>
+                <span class="chart-filter-note" data-culvert-hint hidden>カルバートを除く</span>
               </div>
             </div>
             <div class="chart-placeholder">
@@ -191,7 +201,7 @@
                 <h3 id="rating-chart-title">点検判定区分の分布</h3>
               </div>
               <div class="chart-controls">
-                <span class="tag tag-outline">I / II / III / IV / UNKNOWN</span>
+                <span class="chart-filter-note" data-culvert-hint hidden>カルバートを除く</span>
               </div>
             </div>
             <div class="chart-placeholder">
@@ -206,7 +216,7 @@
                 <h3 id="length-chart-title">橋長階級ヒストグラム</h3>
               </div>
               <div class="chart-controls">
-                <span class="tag">橋種フィルタ連動</span>
+                <span class="chart-filter-note" data-culvert-hint hidden>カルバートを除く</span>
               </div>
             </div>
             <div class="chart-placeholder">
@@ -228,10 +238,35 @@
                     <option value="year">1 年</option>
                   </select>
                 </label>
+                <span class="chart-filter-note" data-culvert-hint hidden>カルバートを除く</span>
               </div>
             </div>
             <div class="chart-placeholder">
               <canvas id="chart-year" aria-label="架設年度分布"></canvas>
+            </div>
+          </article>
+
+          <article class="panel card chart-card" aria-labelledby="pc-tension-chart-title">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">PC橋</p>
+                <h3 id="pc-tension-chart-title">PC橋の張力方式別構成</h3>
+              </div>
+            </div>
+            <div class="chart-placeholder">
+              <canvas id="chart-pc-tension" aria-label="PC橋の張力方式別構成"></canvas>
+            </div>
+          </article>
+
+          <article class="panel card chart-card" aria-labelledby="pc-post-chart-title">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">PC橋ポステン</p>
+                <h3 id="pc-post-chart-title">ポステンPC橋の形式内訳</h3>
+              </div>
+            </div>
+            <div class="chart-placeholder">
+              <canvas id="chart-pc-post" aria-label="ポステンPC橋の形式内訳"></canvas>
             </div>
           </article>
         </section>
@@ -269,6 +304,7 @@
           <p class="map-info">
             表示中の橋梁: <strong data-map-count>0</strong> 件 /
             緯度経度欠損: <strong data-map-missing>0</strong> 件
+            <span class="chart-filter-note" data-culvert-hint hidden>カルバートを除く</span>
           </p>
           <div class="map-legends">
             <div>

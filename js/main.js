@@ -52,6 +52,22 @@
     "その他": "#8b5cf6",
   };
 
+  const PC_TENSION_SEGMENTS = [
+    { key: "pretension", label: "プレテン", color: "#0ea5e9" },
+    { key: "posttension", label: "ポステン", color: "#f97316" },
+    { key: "other", label: "その他", color: "#94a3b8" },
+  ];
+
+  const PC_POST_SEGMENTS = [
+    { key: "hollow", label: "ポステン中空床版" },
+    { key: "tGirder", label: "ポステンT桁" },
+    { key: "box", label: "ポステン箱桁" },
+    { key: "culvert", label: "ポステン溝橋（BOXカルバート）" },
+    { key: "other", label: "その他" },
+  ];
+
+  const PC_POST_COLORS = ["#0ea5e9", "#f97316", "#10b981", "#facc15", "#94a3b8"];
+
   const DATASET_COLORS = ["#0ea5e9", "#10b981", "#f97316", "#ec4899", "#6366f1", "#14b8a6"];
   const DEFAULT_MAP_CENTER = [36.2048, 138.2529];
 
@@ -65,12 +81,15 @@
       stockMode: "count",
       stockScope: "bridgeType",
       yearGrouping: "decade",
+      excludeCulvert: false,
     },
     charts: {
       stock: null,
       rating: null,
       length: null,
       year: null,
+      pcTension: null,
+      pcPost: null,
     },
     map: null,
     mapLayer: null,
@@ -90,6 +109,7 @@
     logClear: document.querySelector("[data-clear-log]"),
     bridgeTypeFilter: document.querySelector("[data-filter-bridge-types]"),
     inspectionFilter: document.querySelector("[data-filter-inspections]"),
+    culvertFilter: document.querySelector("[data-filter-exclude-culvert]"),
     lengthBinRange: document.querySelector("[data-length-bin-range]"),
     lengthBinLabel: document.querySelector("[data-length-bin-label]"),
     stockModeSelect: document.querySelector("[data-stock-mode]"),
@@ -105,6 +125,7 @@
     mapMissing: document.querySelector("[data-map-missing]"),
     mapSizeRange: document.querySelector("[data-marker-size-range]"),
     mapSizeLabel: document.querySelector("[data-marker-size-label]"),
+    culvertHints: Array.from(document.querySelectorAll("[data-culvert-hint]")),
   };
 
   init();
@@ -113,6 +134,7 @@
     buildFilterChips();
     bindRangeControl();
     bindSelectControls();
+    bindCulvertFilter();
     bindMapControls();
     bindDropzone();
     bindLogClear();
@@ -213,6 +235,16 @@
     elements.yearGroupingSelect?.addEventListener("change", (event) => {
       state.filters.yearGrouping = event.currentTarget.value;
       updateYearChart();
+    });
+  }
+
+  function bindCulvertFilter() {
+    const checkbox = elements.culvertFilter;
+    if (!checkbox) return;
+    checkbox.checked = state.filters.excludeCulvert;
+    checkbox.addEventListener("change", (event) => {
+      state.filters.excludeCulvert = Boolean(event.currentTarget.checked);
+      refreshAll();
     });
   }
 
@@ -351,6 +383,12 @@
     const lng = parseNumber(values["起点側位置_経度"]);
     const inspectionYear = parseNumber(values["点検記録_点検実施年度"]);
     const inspectionLevel = normalizeInspection(values["点検記録_判定区分"]);
+    const superstructureType = sanitizeText(values["上部構造形式"]);
+    const superstructureForm = sanitizeText(
+      values["上部工（構造形式）"] ?? values["上部工_構造形式"] ?? values["上部工構造形式"]
+    );
+    const pcMetadata = derivePcMetadata(superstructureType, superstructureForm, materialRaw);
+    const isCulvert = detectCulvert(superstructureType, superstructureForm);
 
     const isEmpty =
       !facilityName &&
@@ -380,6 +418,11 @@
       inspectionYear: inspectionYear ?? null,
       inspectionLevel,
       bridgeType: deriveBridgeType(materialRaw),
+      superstructureType,
+      superstructureForm,
+      isCulvert,
+      pcTensionType: pcMetadata.tensionType,
+      pcPostCategory: pcMetadata.postCategory,
     };
   }
 
@@ -392,6 +435,53 @@
       }
     }
     return "その他";
+  }
+
+  function derivePcMetadata(superstructureType, superstructureForm, materialRaw) {
+    const sources = [superstructureType, superstructureForm, materialRaw].filter(Boolean);
+    if (!sources.length) {
+      return { tensionType: null, postCategory: null };
+    }
+    const normalized = normalizeForMatch(sources.join(" "));
+    let tensionType = null;
+    if (
+      includesAnyKeyword(normalized, [
+        "ポステン",
+        "ﾎﾟｽﾃﾝ",
+        "ポストテン",
+        "ポストテンション",
+        "POSTTENSION",
+        "POST-TENSION",
+        "POST TENSION",
+      ])
+    ) {
+      tensionType = "posttension";
+    } else if (
+      includesAnyKeyword(normalized, ["プレテン", "ﾌﾟﾚﾃﾝ", "プリテン", "PRETENSION", "PRE-TENSION", "PRE TENSION"])
+    ) {
+      tensionType = "pretension";
+    }
+
+    let postCategory = null;
+    if (tensionType === "posttension") {
+      const detailSource = normalizeForMatch(superstructureType?.split("_")[1] || superstructureType || "");
+      if (detailSource.includes("中空床版")) postCategory = "hollow";
+      else if (detailSource.includes("T桁")) postCategory = "tGirder";
+      else if (detailSource.includes("箱桁")) postCategory = "box";
+      else if (detailSource.includes("溝橋") || detailSource.includes("カルバート") || detailSource.includes("CULVERT")) {
+        postCategory = "culvert";
+      } else if (detailSource) {
+        postCategory = "other";
+      }
+    }
+    return { tensionType, postCategory };
+  }
+
+  function detectCulvert(superstructureType, superstructureForm) {
+    const combined = [superstructureType, superstructureForm].filter(Boolean).join(" ");
+    if (!combined) return false;
+    const normalized = normalizeForMatch(combined);
+    return includesAnyKeyword(normalized, ["カルバート", "溝橋", "CULVERT"]);
   }
 
   function deriveDatasetLabel(file, records) {
@@ -529,6 +619,9 @@
     updateRatingChart();
     updateLengthChart();
     updateYearChart();
+    updatePcTensionChart();
+    updatePcPostChart();
+    updateCulvertHints();
   }
 
   function initCharts() {
@@ -558,8 +651,21 @@
       data: {
         labels: [],
         datasets: [
-          { type: "bar", label: "橋梁数", data: [], backgroundColor: "#0ea5e9" },
-          { type: "line", label: "総延長 (km)", data: [], yAxisID: "y1", borderColor: "#f97316", tension: 0.3 },
+          { type: "bar", label: "橋梁数", data: [], backgroundColor: "#0ea5e9", order: 1 },
+          {
+            type: "line",
+            label: "累積相対度数",
+            data: [],
+            yAxisID: "y1",
+            borderColor: "#f97316",
+            tension: 0.3,
+            borderWidth: 2,
+            backgroundColor: "#f97316",
+            pointRadius: 3,
+            pointBackgroundColor: "#f97316",
+            fill: false,
+            order: 0,
+          },
         ],
       },
       options: {
@@ -570,7 +676,12 @@
             position: "right",
             beginAtZero: true,
             grid: { drawOnChartArea: false },
-            title: { display: true, text: "総延長 (km)" },
+            title: { display: true, text: "累積相対度数 (%)" },
+            min: 0,
+            max: 100,
+            ticks: {
+              callback: (value) => `${value}%`,
+            },
           },
         },
       },
@@ -587,12 +698,64 @@
         },
       },
     });
+
+    state.charts.pcTension = createChart("chart-pc-tension", {
+      type: "bar",
+      data: {
+        labels: PC_TENSION_SEGMENTS.map((segment) => segment.label),
+        datasets: [
+          {
+            label: "橋梁数",
+            data: PC_TENSION_SEGMENTS.map(() => 0),
+            backgroundColor: PC_TENSION_SEGMENTS.map((segment) => segment.color),
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: { beginAtZero: true, title: { display: true, text: "橋梁数" } },
+        },
+        plugins: {
+          legend: { display: false },
+        },
+      },
+    });
+
+    state.charts.pcPost = createChart("chart-pc-post", {
+      type: "bar",
+      data: {
+        labels: PC_POST_SEGMENTS.map((segment) => segment.label),
+        datasets: [
+          {
+            label: "橋梁数",
+            data: PC_POST_SEGMENTS.map(() => 0),
+            backgroundColor: PC_POST_COLORS,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: { beginAtZero: true, title: { display: true, text: "橋梁数" } },
+        },
+        plugins: { legend: { display: false } },
+      },
+    });
   }
 
   function createChart(id, config) {
     const canvas = document.getElementById(id);
     if (!canvas || !window.Chart) return null;
-    return new window.Chart(canvas.getContext("2d"), config);
+    const mergedConfig = {
+      ...config,
+      options: {
+        responsive: true,
+        ...(config.options || {}),
+        maintainAspectRatio: false,
+      },
+    };
+    return new window.Chart(canvas.getContext("2d"), mergedConfig);
   }
 
   function updateStockChart() {
@@ -671,15 +834,19 @@
       return `${start}-${end}m`;
     });
     const counts = new Array(binCount).fill(0);
-    const lengths = new Array(binCount).fill(0);
     records.forEach((record) => {
       const index = Math.min(Math.floor(record.bridgeLengthM / binSize), binCount - 1);
       counts[index] += 1;
-      lengths[index] += (record.bridgeLengthM || 0) / 1000;
     });
+    const cumulativeRelative = [];
+    counts.reduce((sum, count, index) => {
+      const nextSum = sum + count;
+      cumulativeRelative[index] = Number(((nextSum / records.length) * 100).toFixed(1));
+      return nextSum;
+    }, 0);
     chart.data.labels = labels;
     chart.data.datasets[0].data = counts;
-    chart.data.datasets[1].data = lengths.map((value) => Number(value.toFixed(3)));
+    chart.data.datasets[1].data = cumulativeRelative;
     chart.update();
   }
 
@@ -715,6 +882,55 @@
       stack: "year",
     }));
     chart.update();
+  }
+
+  function updatePcTensionChart() {
+    const chart = state.charts.pcTension;
+    if (!chart) return;
+    const records = getFilteredRecords({ skipCulvertFilter: true }).filter(
+      (record) => record.bridgeType === "PC橋"
+    );
+    const counts = {
+      pretension: 0,
+      posttension: 0,
+      other: 0,
+    };
+    records.forEach((record) => {
+      const key = record.pcTensionType;
+      if (key && counts[key] !== undefined) {
+        counts[key] += 1;
+      } else {
+        counts.other += 1;
+      }
+    });
+    chart.data.labels = PC_TENSION_SEGMENTS.map((segment) => segment.label);
+    chart.data.datasets[0].data = PC_TENSION_SEGMENTS.map((segment) => counts[segment.key]);
+    chart.update();
+  }
+
+  function updatePcPostChart() {
+    const chart = state.charts.pcPost;
+    if (!chart) return;
+    const records = getFilteredRecords({ skipCulvertFilter: true }).filter(
+      (record) => record.bridgeType === "PC橋" && record.pcTensionType === "posttension"
+    );
+    const counts = Object.fromEntries(PC_POST_SEGMENTS.map((segment) => [segment.key, 0]));
+    records.forEach((record) => {
+      const key = record.pcPostCategory && counts[record.pcPostCategory] !== undefined ? record.pcPostCategory : "other";
+      counts[key] += 1;
+    });
+    chart.data.labels = PC_POST_SEGMENTS.map((segment) => segment.label);
+    chart.data.datasets[0].data = PC_POST_SEGMENTS.map((segment) => counts[segment.key]);
+    chart.update();
+  }
+
+  function updateCulvertHints() {
+    const shouldShow = Boolean(state.filters.excludeCulvert);
+    if (!Array.isArray(elements.culvertHints)) return;
+    elements.culvertHints.forEach((hint) => {
+      if (!hint) return;
+      hint.hidden = !shouldShow;
+    });
   }
 
   function updateMap() {
@@ -801,7 +1017,8 @@
     state.mapLayer = window.L.layerGroup().addTo(state.map);
   }
 
-  function getFilteredRecords() {
+  function getFilteredRecords(options = {}) {
+    const { skipCulvertFilter = false } = options;
     const activeDatasetIds = new Set(state.datasets.filter((dataset) => dataset.active).map((dataset) => dataset.id));
     const { bridgeTypes, inspectionLevels } = state.filters;
     const records = [];
@@ -810,6 +1027,7 @@
       dataset.records.forEach((record) => {
         if (!bridgeTypes.has(record.bridgeType)) return;
         if (!inspectionLevels.has(record.inspectionLevel)) return;
+        if (!skipCulvertFilter && state.filters.excludeCulvert && record.isCulvert) return;
         records.push(record);
       });
     });
@@ -957,5 +1175,16 @@
           return char;
       }
     });
+  }
+
+  function includesAnyKeyword(text, keywords) {
+    if (!text) return false;
+    return keywords.some((keyword) => text.includes(normalizeForMatch(keyword)));
+  }
+
+  function normalizeForMatch(value) {
+    if (value === null || value === undefined) return "";
+    const text = value.toString();
+    return typeof text.normalize === "function" ? text.normalize("NFKC").toUpperCase() : text.toUpperCase();
   }
 })();
