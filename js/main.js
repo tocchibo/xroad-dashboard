@@ -657,21 +657,20 @@
       data: {
         labels: [],
         datasets: [
-          { type: "bar", label: "橋梁数", data: [], backgroundColor: "#0ea5e9", order: 1 },
           {
             type: "line",
             label: "累積相対度数",
             data: [],
             yAxisID: "y1",
-            borderColor: "#f97316",
-            tension: 0.3,
+            borderColor: "#4b5563",
+            tension: 0,
             borderWidth: 2,
-            backgroundColor: "#f97316",
+            backgroundColor: "#4b5563",
             pointRadius: 3,
-            pointBackgroundColor: "#f97316",
+            pointBackgroundColor: "#4b5563",
             fill: false,
-            order: 0,
           },
+          { type: "bar", label: "橋梁数", data: [], backgroundColor: "#0ea5e9" },
         ],
       },
       options: {
@@ -701,6 +700,17 @@
         scales: {
           x: { stacked: true },
           y: { stacked: true, beginAtZero: true, title: { display: true, text: "橋梁数" } },
+          y1: {
+            position: "right",
+            beginAtZero: true,
+            grid: { drawOnChartArea: false },
+            title: { display: true, text: "累積相対度数 (%)" },
+            min: 0,
+            max: 100,
+            ticks: {
+              callback: (value) => `${value}%`,
+            },
+          },
         },
       },
     });
@@ -823,11 +833,14 @@
   function updateLengthChart() {
     const chart = state.charts.length;
     if (!chart) return;
+    const lineDataset = chart.data.datasets.find((dataset) => dataset.type === "line");
+    const barDataset = chart.data.datasets.find((dataset) => dataset.type === "bar");
+    if (!lineDataset || !barDataset) return;
     const records = getFilteredRecords().filter((record) => Number.isFinite(record.bridgeLengthM));
     if (!records.length) {
       chart.data.labels = [];
-      chart.data.datasets[0].data = [];
-      chart.data.datasets[1].data = [];
+      lineDataset.data = [];
+      barDataset.data = [];
       chart.update();
       return;
     }
@@ -851,8 +864,8 @@
       return nextSum;
     }, 0);
     chart.data.labels = labels;
-    chart.data.datasets[0].data = counts;
-    chart.data.datasets[1].data = cumulativeRelative;
+    barDataset.data = counts;
+    lineDataset.data = cumulativeRelative;
     chart.update();
   }
 
@@ -881,21 +894,42 @@
     });
     const sortedKeys = Array.from(bucketMap.keys()).sort((a, b) => a - b);
     chart.data.labels = sortedKeys.map((key) => bucketMap.get(key).label);
-    chart.data.datasets = BRIDGE_TYPES.map((type) => ({
+    const bucketTotals = sortedKeys.map((key) =>
+      BRIDGE_TYPES.reduce((sum, type) => sum + bucketMap.get(key).counts[type], 0)
+    );
+    const cumulativeRelative = [];
+    bucketTotals.reduce((sum, total, index) => {
+      const nextSum = sum + total;
+      cumulativeRelative[index] = Number(((nextSum / records.length) * 100).toFixed(1));
+      return nextSum;
+    }, 0);
+    const stackedDatasets = BRIDGE_TYPES.map((type) => ({
       label: type,
       data: sortedKeys.map((key) => bucketMap.get(key).counts[type]),
       backgroundColor: BRIDGE_TYPE_COLOR_MAP[type],
       stack: "year",
     }));
+    const cumulativeDataset = {
+      type: "line",
+      label: "累積相対度数",
+      data: cumulativeRelative,
+      yAxisID: "y1",
+      borderColor: "#4b5563",
+      backgroundColor: "#4b5563",
+      tension: 0,
+      borderWidth: 2,
+      pointRadius: 3,
+      pointBackgroundColor: "#4b5563",
+      fill: false,
+    };
+    chart.data.datasets = [cumulativeDataset, ...stackedDatasets];
     chart.update();
   }
 
   function updatePcTensionChart() {
     const chart = state.charts.pcTension;
     if (!chart) return;
-    const records = getFilteredRecords({ skipCulvertFilter: true }).filter(
-      (record) => record.bridgeType === "PC橋"
-    );
+    const records = getFilteredRecords().filter((record) => record.bridgeType === "PC橋");
     const counts = {
       pretension: 0,
       posttension: 0,
@@ -917,7 +951,7 @@
   function updatePcPostChart() {
     const chart = state.charts.pcPost;
     if (!chart) return;
-    const records = getFilteredRecords({ skipCulvertFilter: true }).filter(
+    const records = getFilteredRecords().filter(
       (record) => record.bridgeType === "PC橋" && record.pcTensionType === "posttension"
     );
     const counts = Object.fromEntries(PC_POST_SEGMENTS.map((segment) => [segment.key, 0]));

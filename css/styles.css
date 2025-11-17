@@ -126,6 +126,10 @@ img {
   margin-bottom: 1.25rem;
 }
 
+.panel-header.panel-header-tight {
+  margin-bottom: 0.75rem;
+}
+
 .panel-header h2,
 .panel-header h3 {
   margin: 0.2rem 0 0;
@@ -152,11 +156,47 @@ img {
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 }
 
+.control-grid {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  align-items: stretch;
+}
+
+.control-grid > .panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
 .loader-controls {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
   margin-bottom: 1rem;
+}
+
+.loader-panel .loader-controls {
+  margin-bottom: 0;
+}
+
+.loader-content {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  flex: 1;
+}
+
+.loader-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.loader-hint {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--muted);
 }
 
 .file-input-button {
@@ -197,6 +237,8 @@ img {
   padding: 1.5rem;
   background: #fafbff;
   transition: border-color 0.2s, background 0.2s;
+  display: flex;
+  align-items: center;
   outline: none;
 }
 
@@ -212,6 +254,13 @@ img {
 .dropzone-title {
   margin: 0;
   font-weight: 600;
+}
+
+.dropzone-inner {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
 }
 
 .dropzone-guides {
@@ -534,6 +583,35 @@ img {
   font-weight: 600;
 }
 
+.chart-range-inline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 220px;
+}
+
+.range-inline-control {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+}
+
+.range-inline-control input {
+  flex: 1 1 140px;
+  min-width: 140px;
+}
+
+.range-inline-value {
+  font-weight: 600;
+}
+
+.chart-range-inline-hint {
+  margin: 0;
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
 .range-display {
   display: flex;
   align-items: center;
@@ -546,8 +624,8 @@ img {
 
 .range-hint {
   margin: 0.3rem 0 0;
-  color: var(--muted);
   font-size: 0.85rem;
+  color: var(--muted);
 }
 
 .kpi-panel {
@@ -607,6 +685,7 @@ img {
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
+  align-items: flex-start;
 }
 
 .chart-filter-note {

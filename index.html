@@ -47,97 +47,75 @@
       </header>
 
       <main class="app-main">
-        <section class="panel card loader-panel" aria-labelledby="csv-loader-heading">
-          <div class="panel-header">
-            <div>
-              <p class="eyebrow">STEP 1</p>
-              <h2 id="csv-loader-heading">CSV 読み込み</h2>
-            </div>
-            <p class="panel-description">
-              xROAD の橋梁リスト（77号調査）から書き出した CSV をここで読み込みます。複数ファイルをまとめて追加すると一気に比較できます。
-            </p>
-          </div>
-          <div class="loader-controls">
-            <label class="file-input-button">
-              <input type="file" accept=".csv,text/csv" multiple data-file-input />
-              <span>CSV ファイルを選択</span>
-            </label>
-          </div>
-          <div class="dropzone" data-dropzone tabindex="0">
-            <div class="dropzone-inner">
-              <p class="dropzone-title">ドラッグ & ドロップでも追加できます</p>
-              <p class="dropzone-hint">
-                1 ファイルに 1 自治体をまとめた CSV を推奨します。読み込みはブラウザ内で完結し、完了するとすぐにグラフへ反映されます。
-              </p>
-            </div>
-            
-          </div>
-        </section>
 
-        <section class="panel-row">
-          <article class="panel card dataset-panel" aria-labelledby="dataset-heading">
-            <div class="panel-header">
-              <div>
-                <p class="eyebrow">STEP 2</p>
-                <h2 id="dataset-heading">読み込み済み dataset</h2>
-              </div>
-              <p class="panel-description">
-                ファイル名、自治体名、橋梁数、延長、点検進捗を確認し、ON/OFF を切り替えられます。切り替えはチャート・地図にも反映されます。
-              </p>
-            </div>
-            <p class="dataset-empty" data-dataset-empty>
-              dataset はまだありません。CSV を取り込むとここに一覧が表示されます。
-            </p>
-            <ul class="dataset-list" data-dataset-list aria-live="polite"></ul>
-          </article>
+<section class="control-grid" aria-label="CSV 読み込みと設定エリア">
+  <article class="panel card loader-panel" aria-labelledby="csv-loader-heading">
+    <div class="panel-header">
+      <div>
+        <p class="eyebrow">STEP 1</p>
+        <h2 id="csv-loader-heading">CSV 読み込み</h2>
+      </div>
+      <p class="panel-description">xROAD の橋梁リスト(7号調書)から書き出した CSV をここで読み込みます。複数ファイルをまとめて追加すると一覧に比較できます。</p>
+    </div>
+    <div class="loader-content">
+      <div class="loader-actions">
+        <div class="loader-controls">
+          <label class="file-input-button">
+            <input type="file" accept=".csv,text/csv" multiple data-file-input />
+            <span>CSV ファイルを選択</span>
+          </label>
+        </div>
+        <p class="loader-hint">ドラッグ＆ドロップや複数選択にも対応し、読み込みはブラウザ内ですぐに完了します。</p>
+        <p class="loader-hint">1 ファイルを自治体単位でまとめておくと、そのままグラフへ反映しやすくなります。</p>
+      </div>
+      <div class="dropzone" data-dropzone tabindex="0">
+        <div class="dropzone-inner">
+          <p class="dropzone-title">ここに CSV をドラッグ &amp; ドロップ</p>
+          <p class="dropzone-hint">取り込みが完了するとすぐに指標や地図へ反映されます。</p>
+        </div>
+      </div>
+    </div>
+  </article>
 
-          <article class="panel card filter-panel" aria-labelledby="filter-heading">
-            <div class="panel-header">
-              <div>
-                <p class="eyebrow">STEP 3</p>
-                <h2 id="filter-heading">フィルタ & 表示設定</h2>
-              </div>
-              <p class="panel-description">
-                橋種や点検判定区分、チャートの集計単位を切り替えて、知りたい条件だけに絞り込めます。
-              </p>
-            </div>
-            <div class="filter-section">
-              <p class="filter-label">橋種カテゴリ</p>
-              <div class="chip-group" role="group" aria-label="橋種フィルタ" data-filter-bridge-types></div>
-            </div>
-            <div class="filter-section">
-              <p class="filter-label">点検判定区分</p>
-              <div class="chip-group" role="group" aria-label="点検判定フィルタ" data-filter-inspections></div>
-            </div>
-            <div class="filter-section">
-              <p class="filter-label">橋長階級（ヒストグラムの階級幅）</p>
-              <div class="range-display">
-                <span>5</span>
-                <input
-                  type="range"
-                  min="5"
-                  max="50"
-                  step="5"
-                  value="10"
-                  data-length-bin-range
-                  aria-label="橋長階級幅"
-                />
-                <span>50</span>
-              </div>
-              <p class="range-hint">
-                現在: <strong data-length-bin-label>10 m</strong> / 10 m 刻みは橋長分布を把握する際の目安です。
-              </p>
-            </div>
-            <div class="filter-section filter-section-sub">
-              <p class="filter-label">表示設定</p>
-              <label class="checkbox-control">
-                <input type="checkbox" data-filter-exclude-culvert />
-                <span>カルバートを除く</span>
-              </label>
-              <p class="filter-note">溝橋・カルバート形式の橋梁を全体集計から除外します。</p>
-            </div>
-          </article>
-        </section>
+  <article class="panel card dataset-panel" aria-labelledby="dataset-heading">
+    <div class="panel-header panel-header-tight">
+      <div>
+        <p class="eyebrow">STEP 2</p>
+        <h2 id="dataset-heading">読み込み済み dataset</h2>
+      </div>
+      <p class="panel-description">ファイル名、自治体名、橋梁数、延長、点検推奨範囲などを ON/OFF で切り替えられ、切り替えはチャート・地図にも反映されます。</p>
+    </div>
+    <p class="dataset-empty" data-dataset-empty>dataset はまだありません。CSV を取り込むとここに一覧が表示されます。</p>
+    <ul class="dataset-list" data-dataset-list aria-live="polite"></ul>
+  </article>
+
+  <article class="panel card filter-panel" aria-labelledby="filter-heading">
+    <div class="panel-header panel-header-tight">
+      <div>
+        <p class="eyebrow">STEP 3</p>
+        <h2 id="filter-heading">フィルタ & 表示設定</h2>
+      </div>
+      <p class="panel-description">橋種や点検判定区分、チャートの集計単位を切り替えて、知りたい条件だけに絞り込めます。</p>
+    </div>
+    <div class="filter-section">
+      <p class="filter-label">橋種カテゴリ</p>
+      <div class="chip-group" role="group" aria-label="橋種フィルタ" data-filter-bridge-types></div>
+    </div>
+    <div class="filter-section">
+      <p class="filter-label">点検判定区分</p>
+      <div class="chip-group" role="group" aria-label="点検判定フィルタ" data-filter-inspections></div>
+    </div>
+    <div class="filter-section filter-section-sub">
+      <p class="filter-label">表示設定</p>
+      <label class="checkbox-control">
+        <input type="checkbox" data-filter-exclude-culvert />
+        <span>カルバートを除く</span>
+      </label>
+      <p class="filter-note">橋種・カルバート形式の橋梁を全体集計から除外します。</p>
+    </div>
+  </article>
+</section>
+
 
         <section class="panel card kpi-panel" aria-label="KPI ハイライト">
           <div class="kpi-grid">
@@ -216,6 +194,22 @@
                 <h3 id="length-chart-title">橋長階級ヒストグラム</h3>
               </div>
               <div class="chart-controls">
+                <div class="chart-range-inline">
+                  <label class="range-inline-control">
+                    階級幅:
+                    <input
+                      type="range"
+                      min="5"
+                      max="50"
+                      step="5"
+                      value="10"
+                      data-length-bin-range
+                      aria-label="橋長階級幅"
+                    />
+                    <span class="range-inline-value" data-length-bin-label aria-live="polite">10 m</span>
+                  </label>
+                  <p class="chart-range-inline-hint">10 m 刻みは橋長分布を把握する際の目安です。</p>
+                </div>
                 <span class="chart-filter-note" data-culvert-hint hidden>カルバートを除く</span>
               </div>
             </div>
@@ -252,6 +246,9 @@
                 <p class="eyebrow">PC橋</p>
                 <h3 id="pc-tension-chart-title">PC橋の張力方式別構成</h3>
               </div>
+              <div class="chart-controls">
+                <span class="chart-filter-note" data-culvert-hint hidden>カルバートを除く</span>
+              </div>
             </div>
             <div class="chart-placeholder">
               <canvas id="chart-pc-tension" aria-label="PC橋の張力方式別構成"></canvas>
@@ -263,6 +260,9 @@
               <div>
                 <p class="eyebrow">PC橋ポステン</p>
                 <h3 id="pc-post-chart-title">ポステンPC橋の形式内訳</h3>
+              </div>
+              <div class="chart-controls">
+                <span class="chart-filter-note" data-culvert-hint hidden>カルバートを除く</span>
               </div>
             </div>
             <div class="chart-placeholder">
