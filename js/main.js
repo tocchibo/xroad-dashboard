@@ -55,21 +55,25 @@
   const PC_TENSION_SEGMENTS = [
     { key: "pretension", label: "プレテン", color: "#0ea5e9" },
     { key: "posttension", label: "ポステン", color: "#f97316" },
-    { key: "other", label: "その他", color: "#94a3b8" },
+    { key: "other", label: "不明", color: "#94a3b8" },
   ];
 
   const PC_POST_SEGMENTS = [
     { key: "hollow", label: "ポステン中空床版" },
     { key: "tGirder", label: "ポステンT桁" },
     { key: "box", label: "ポステン箱桁" },
-    { key: "culvert", label: "ポステン溝橋（BOXカルバート）" },
     { key: "other", label: "その他" },
   ];
 
-  const PC_POST_COLORS = ["#0ea5e9", "#f97316", "#10b981", "#facc15", "#94a3b8"];
+  const PC_POST_COLORS = ["#0ea5e9", "#f97316", "#10b981", "#94a3b8"];
 
   const DATASET_COLORS = ["#0ea5e9", "#10b981", "#f97316", "#ec4899", "#6366f1", "#14b8a6"];
   const DEFAULT_MAP_CENTER = [36.2048, 138.2529];
+  const MAP_MARKER_BASE_SCALE = 0.55;
+  const MAP_MARKER_MIN_DELTA = -50;
+  const MAP_MARKER_MAX_DELTA = 50;
+  const MAP_MARKER_BASE_SIZE = 22;
+  const MAP_MARKER_MIN_SIZE = 6;
 
   const state = {
     datasets: [],
@@ -96,7 +100,7 @@
     forceFitMap: false,
     prevMapCount: 0,
     lastUploadSummaries: [],
-    mapMarkerScale: 1,
+    mapMarkerScale: MAP_MARKER_BASE_SCALE,
   };
 
   const elements = {
@@ -205,22 +209,26 @@
   function bindMapControls() {
     const range = elements.mapSizeRange;
     if (!range) return;
-    const clamp = (value) => Math.min(Math.max(value, 0.3), 1);
+    const clampDelta = (value) => Math.min(Math.max(value, MAP_MARKER_MIN_DELTA), MAP_MARKER_MAX_DELTA);
     const updateLabel = () => {
       if (elements.mapSizeLabel) {
-        elements.mapSizeLabel.textContent = `${Math.round(state.mapMarkerScale * 100)}%`;
+        const ratio = state.mapMarkerScale / MAP_MARKER_BASE_SCALE;
+        elements.mapSizeLabel.textContent = `${Math.round(ratio * 100)}%`;
       }
     };
-    const applyValue = (value) => {
-      if (!Number.isFinite(value)) return;
-      state.mapMarkerScale = clamp(value);
+    const applyValue = (deltaPercent) => {
+      if (!Number.isFinite(deltaPercent)) return;
+      const clamped = clampDelta(deltaPercent);
+      state.mapMarkerScale = MAP_MARKER_BASE_SCALE * (1 + clamped / 100);
+      range.value = clamped;
       updateLabel();
       updateMap();
     };
     range.addEventListener("input", (event) => {
       applyValue(Number(event.currentTarget.value));
     });
-    applyValue(Number(range.value) || 1);
+    const initialDelta = Number(range.value);
+    applyValue(Number.isFinite(initialDelta) ? initialDelta : 0);
   }
 
   function bindSelectControls() {
@@ -468,9 +476,7 @@
       if (detailSource.includes("中空床版")) postCategory = "hollow";
       else if (detailSource.includes("T桁")) postCategory = "tGirder";
       else if (detailSource.includes("箱桁")) postCategory = "box";
-      else if (detailSource.includes("溝橋") || detailSource.includes("カルバート") || detailSource.includes("CULVERT")) {
-        postCategory = "culvert";
-      } else if (detailSource) {
+      else if (detailSource) {
         postCategory = "other";
       }
     }
@@ -968,9 +974,9 @@
     const grade = record.inspectionLevel || "UNKNOWN";
     const color = INSPECTION_COLOR_MAP[grade] || INSPECTION_COLOR_MAP.UNKNOWN;
     const shapeClass = `marker-shape-${getBridgeTypeKey(record.bridgeType)}`;
-    const scale = state.mapMarkerScale && Number.isFinite(state.mapMarkerScale) ? state.mapMarkerScale : 1;
-    const baseSize = 22;
-    const size = Math.max(12, Math.round(baseSize * scale));
+    const scale =
+      state.mapMarkerScale && Number.isFinite(state.mapMarkerScale) ? state.mapMarkerScale : MAP_MARKER_BASE_SCALE;
+    const size = Math.max(MAP_MARKER_MIN_SIZE, Math.round(MAP_MARKER_BASE_SIZE * scale));
     const anchor = Math.round(size / 2);
     const style = `background-color:${color};width:${size}px;height:${size}px;`;
     return window.L.divIcon({
