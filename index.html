@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Municipal Bridge Dashboard</title>
+    <title>自治体橋梁ダッシュボード</title>
     <meta name="description" content="自治体の橋梁データをブラウザだけで可視化できるダッシュボード" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -37,8 +37,7 @@
     <div class="app-shell">
       <header class="app-header">
         <div class="header-primary">
-          <p class="eyebrow">Municipal Bridge Dashboard</p>
-          <h1>自治体向け橋梁ダッシュボード</h1>
+          <h1>自治体橋梁ダッシュボード</h1>
           <p class="lead">
             自治体ごとの橋梁施設一覧 CSV を読み込むだけで、ストック構成・健全度・橋長や架設年度の傾向、地図上での配置をまとめて確認できる
             クライアントサイドアプリです。データはブラウザ内で完結し、複数自治体の状況を安全に比較できます。
@@ -124,7 +123,6 @@
           <article class="panel card chart-card" aria-labelledby="stock-chart-title">
             <div class="panel-header">
               <div>
-                <p class="eyebrow">橋梁ストック</p>
                 <h3 id="stock-chart-title">橋種別ストック構成</h3>
               </div>
               <div class="chart-controls">
@@ -153,7 +151,6 @@
           <article class="panel card chart-card" aria-labelledby="rating-chart-title">
             <div class="panel-header">
               <div>
-                <p class="eyebrow">健全度</p>
                 <h3 id="rating-chart-title">点検判定区分の分布</h3>
               </div>
               <div class="chart-controls">
@@ -168,7 +165,6 @@
           <article class="panel card chart-card" aria-labelledby="length-chart-title">
             <div class="panel-header">
               <div>
-                <p class="eyebrow">延長分布</p>
                 <h3 id="length-chart-title">橋長階級ヒストグラム</h3>
               </div>
               <div class="chart-controls">
@@ -198,7 +194,6 @@
           <article class="panel card chart-card" aria-labelledby="year-chart-title">
             <div class="panel-header">
               <div>
-                <p class="eyebrow">架設年</p>
                 <h3 id="year-chart-title">架設年度分布</h3>
               </div>
               <div class="chart-controls">
@@ -220,7 +215,6 @@
           <article class="panel card chart-card" aria-labelledby="pc-tension-chart-title">
             <div class="panel-header">
               <div>
-                <p class="eyebrow">PC橋</p>
                 <h3 id="pc-tension-chart-title">PC橋の張力方式別構成</h3>
               </div>
               <div class="chart-controls">
@@ -235,7 +229,6 @@
           <article class="panel card chart-card" aria-labelledby="pc-post-chart-title">
             <div class="panel-header">
               <div>
-                <p class="eyebrow">PC橋ポステン</p>
                 <h3 id="pc-post-chart-title">ポステンPC橋の形式内訳</h3>
               </div>
               <div class="chart-controls">
@@ -251,7 +244,6 @@
         <section class="panel card map-panel" aria-labelledby="map-heading">
           <div class="panel-header">
             <div>
-              <p class="eyebrow">ロケーション</p>
               <h2 id="map-heading">地理的分布</h2>
             </div>
             <div class="map-controls" aria-label="地図のプロット表示設定">
@@ -288,7 +280,7 @@
                 <li><span class="legend-swatch swatch-ii"></span>II（予防保全）</li>
                 <li><span class="legend-swatch swatch-iii"></span>III（早期措置）</li>
                 <li><span class="legend-swatch swatch-iv"></span>IV（緊急措置）</li>
-                <li><span class="legend-swatch swatch-unknown"></span>UNKNOWN</li>
+                <li><span class="legend-swatch swatch-unknown"></span>不明</li>
               </ul>
             </div>
             <div>
@@ -303,23 +295,10 @@
           </div>
         </section>
 
-        <section class="panel card notes-panel" aria-labelledby="notes-heading">
-          <div class="panel-header">
-            <div>
-              <p class="eyebrow">ガイダンス</p>
-              <h2 id="notes-heading">ご利用上の注意</h2>
-            </div>
-          </div>
-          <ul class="notes-list">
-            <li>CSV はブラウザ内でのみ扱い、ページを閉じると読み込み内容はリセットされます。</li>
-            <li>同じファイルを再度読み込むと別 dataset として追加されます。重複が不要な場合は dataset リストで OFF にしてください。</li>
-            <li>緯度・経度が入力されていない橋梁は地図には表示されませんが、グラフ集計には含まれます。</li>
-          </ul>
-        </section>
       </main>
 
       <footer class="app-footer">
-        <p>Municipal Bridge Dashboard — ローカル CSV を安全に可視化</p>
+        <p>自治体橋梁ダッシュボード — ローカル CSV を安全に可視化</p>
       </footer>
     </div>
   </body>

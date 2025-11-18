@@ -44,6 +44,13 @@
     IV: "#dc2626",
     UNKNOWN: "#9ca3af",
   };
+  const INSPECTION_LABEL_MAP = {
+    I: "I",
+    II: "II",
+    III: "III",
+    IV: "IV",
+    UNKNOWN: "不明",
+  };
 
   const BRIDGE_TYPE_COLOR_MAP = {
     "PC橋": "#2563eb",
@@ -152,6 +159,10 @@
     if (!window.L) addLog("Leaflet が利用できません。", "error");
   }
 
+  function getInspectionLabel(level) {
+    return INSPECTION_LABEL_MAP[level] || level;
+  }
+
   function buildFilterChips() {
     if (elements.bridgeTypeFilter) {
       BRIDGE_TYPES.forEach((type) => {
@@ -170,7 +181,7 @@
         chip.type = "button";
         chip.className = "chip is-active";
         chip.dataset.value = level;
-        chip.textContent = level;
+        chip.textContent = getInspectionLabel(level);
         chip.addEventListener("click", () => toggleFilter(state.filters.inspectionLevels, level, chip));
         elements.inspectionFilter.appendChild(chip);
       });
@@ -569,7 +580,19 @@
     srOnly.textContent = `${dataset.label} を表示する`;
     toggle.append(checkbox, slider, srOnly);
 
-    header.append(title, toggle);
+    const actions = document.createElement("div");
+    actions.className = "dataset-actions";
+    actions.appendChild(toggle);
+
+    const removeButton = document.createElement("button");
+    removeButton.type = "button";
+    removeButton.className = "dataset-remove";
+    removeButton.setAttribute("aria-label", `${dataset.label} を一覧から削除する`);
+    removeButton.innerHTML = "&times;";
+    removeButton.addEventListener("click", () => removeDataset(dataset.id));
+    actions.appendChild(removeButton);
+
+    header.append(title, actions);
 
     const summary = document.createElement("div");
     summary.className = "dataset-summary";
@@ -597,6 +620,14 @@
     valueEl.textContent = value;
     wrapper.append(labelEl, valueEl);
     return wrapper;
+  }
+
+  function removeDataset(datasetId) {
+    const index = state.datasets.findIndex((dataset) => dataset.id === datasetId);
+    if (index === -1) return;
+    const [removed] = state.datasets.splice(index, 1);
+    addLog(`dataset「${removed?.label ?? datasetId}」を削除しました。`, "info");
+    refreshAll();
   }
 
   function updateKpis() {
@@ -815,7 +846,7 @@
     const chart = state.charts.rating;
     if (!chart) return;
     const records = getFilteredRecords();
-    chart.data.labels = INSPECTION_LEVELS;
+    chart.data.labels = INSPECTION_LEVELS.map(getInspectionLabel);
     chart.data.datasets = BRIDGE_TYPES.map((type) => ({
       label: type,
       data: INSPECTION_LEVELS.map((level) =>
