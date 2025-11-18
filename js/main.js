@@ -81,6 +81,34 @@
   const MAP_MARKER_MAX_DELTA = 50;
   const MAP_MARKER_BASE_SIZE = 22;
   const MAP_MARKER_MIN_SIZE = 6;
+  const BASE_LAYER_CONFIG = {
+    standard: {
+      label: "OpenStreetMap",
+      url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      options: {
+        attribution: "&copy; OpenStreetMap contributors",
+        maxZoom: 19,
+      },
+    },
+    positron: {
+      label: "CartoDB Positron",
+      url: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+      options: {
+        attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
+        subdomains: "abcd",
+        maxZoom: 20,
+      },
+    },
+    darkmatter: {
+      label: "CartoDB Dark Matter",
+      url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+      options: {
+        attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
+        subdomains: "abcd",
+        maxZoom: 20,
+      },
+    },
+  };
 
   const state = {
     datasets: [],
@@ -104,6 +132,9 @@
     },
     map: null,
     mapLayer: null,
+    mapBaseLayers: {},
+    activeBaseLayer: null,
+    selectedBaseLayer: "standard",
     forceFitMap: false,
     prevMapCount: 0,
     lastUploadSummaries: [],
@@ -137,6 +168,7 @@
     mapMissing: document.querySelector("[data-map-missing]"),
     mapSizeRange: document.querySelector("[data-marker-size-range]"),
     mapSizeLabel: document.querySelector("[data-marker-size-label]"),
+    baseLayerSelect: document.querySelector("[data-base-layer]"),
     culvertHints: Array.from(document.querySelectorAll("[data-culvert-hint]")),
   };
 
@@ -148,6 +180,7 @@
     bindSelectControls();
     bindCulvertFilter();
     bindMapControls();
+    bindBaseLayerSelect();
     bindDropzone();
     bindLogClear();
     initCharts();
@@ -241,6 +274,19 @@
     });
     const initialDelta = Number(range.value);
     applyValue(Number.isFinite(initialDelta) ? initialDelta : 0);
+  }
+
+  function bindBaseLayerSelect() {
+    const select = elements.baseLayerSelect;
+    if (!select) return;
+    select.value = state.selectedBaseLayer;
+    select.addEventListener("change", (event) => {
+      const value = event.currentTarget.value;
+      state.selectedBaseLayer = value;
+      if (state.map) {
+        setBaseLayer(value);
+      }
+    });
   }
 
   function bindSelectControls() {
@@ -1001,6 +1047,28 @@
     });
   }
 
+  function createBaseLayers() {
+    const layers = {};
+    if (!window.L) return layers;
+    Object.entries(BASE_LAYER_CONFIG).forEach(([key, config]) => {
+      layers[key] = window.L.tileLayer(config.url, { ...(config.options || {}) });
+    });
+    return layers;
+  }
+
+  function setBaseLayer(layerKey) {
+    state.selectedBaseLayer = layerKey;
+    if (!state.map || !state.mapBaseLayers || !state.mapBaseLayers[layerKey]) return;
+    if (state.activeBaseLayer && state.mapBaseLayers[state.activeBaseLayer]) {
+      state.map.removeLayer(state.mapBaseLayers[state.activeBaseLayer]);
+    }
+    state.mapBaseLayers[layerKey].addTo(state.map);
+    state.activeBaseLayer = layerKey;
+    if (elements.baseLayerSelect) {
+      elements.baseLayerSelect.value = layerKey;
+    }
+  }
+
   function updateMap() {
     if (!state.map || !state.mapLayer) return;
     const records = getFilteredRecords();
@@ -1079,9 +1147,20 @@
     const mapElement = document.getElementById("map");
     if (!mapElement || !window.L) return;
     state.map = window.L.map(mapElement, { center: DEFAULT_MAP_CENTER, zoom: 5, preferCanvas: true });
-    window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "&copy; OpenStreetMap contributors",
-    }).addTo(state.map);
+    state.mapBaseLayers = createBaseLayers();
+    if (!state.mapBaseLayers[state.selectedBaseLayer]) {
+      state.selectedBaseLayer = "standard";
+    }
+    if (state.mapBaseLayers[state.selectedBaseLayer]) {
+      setBaseLayer(state.selectedBaseLayer);
+    }
+    if (window.L.control && typeof window.L.control.fullscreen === "function") {
+      window.L.control.fullscreen({
+        position: "topleft",
+        title: "全画面表示",
+        titleCancel: "全画面を終了",
+      }).addTo(state.map);
+    }
     state.mapLayer = window.L.layerGroup().addTo(state.map);
   }
 

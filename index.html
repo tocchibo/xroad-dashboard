@@ -1,305 +1,1235 @@
-<!DOCTYPE html>
-<html lang="ja">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>自治体橋梁ダッシュボード</title>
-    <meta name="description" content="自治体の橋梁データをブラウザだけで可視化できるダッシュボード" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
-    <link
-      rel="icon"
-      type="image/svg+xml"
-      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230068d6'/%3E%3Cpath d='M8 21h16v-2H8zm0-4h16v-2H8zm0-4h16V11H8z' fill='white'/%3E%3C/svg%3E"
-    />
-    <link rel="stylesheet" href="css/styles.css" />
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"
-      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-      crossorigin=""
-    />
-    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
-    <script
-      src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"
-      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-      crossorigin=""
-      defer
-    ></script>
-    <script src="js/main.js" defer></script>
-  </head>
-  <body>
-    <div class="app-shell">
-      <header class="app-header">
-        <div class="header-primary">
-          <h1>自治体橋梁ダッシュボード</h1>
-          <p class="lead">
-            自治体ごとの橋梁施設一覧 CSV を読み込むだけで、ストック構成・健全度・橋長や架設年度の傾向、地図上での配置をまとめて確認できる
-            クライアントサイドアプリです。データはブラウザ内で完結し、複数自治体の状況を安全に比較できます。
-          </p>
-        </div>
-      </header>
-
-      <main class="app-main">
-
-<section class="control-grid" aria-label="CSV 読み込みと指標">
-  <article class="panel card loader-panel ingest-panel" aria-label="CSV 読み込みと dataset">
-    <div class="ingest-grid">
-      <section class="ingest-column ingest-upload" aria-labelledby="csv-loader-heading">
-        <h3 class="ingest-subtitle" id="csv-loader-heading">CSV 読み込み</h3>
-        <div class="dropzone" data-dropzone tabindex="0">
-          <div class="dropzone-inner">
-            <p class="dropzone-title">ここに CSV をドラッグ &amp; ドロップ</p>
-          </div>
-        </div>
-        <div class="loader-controls">
-          <label class="file-input-button">
-            <input type="file" accept=".csv,text/csv" multiple data-file-input />
-            <span>CSV ファイルを選択</span>
-          </label>
-        </div>
-      </section>
-      <section class="ingest-column ingest-datasets" aria-labelledby="dataset-heading">
-        <h3 class="ingest-subtitle" id="dataset-heading">読み込み済み dataset</h3>
-        <p class="dataset-empty" data-dataset-empty>dataset はまだありません。CSV を取り込むとここに一覧が表示されます。</p>
-        <ul class="dataset-list" data-dataset-list aria-live="polite"></ul>
-      </section>
-    </div>
-  </article>
-
-  <section class="panel card kpi-panel" aria-label="KPI ハイライト">
-    <div class="kpi-grid">
-      <div class="kpi-card">
-        <p class="kpi-label">アクティブ dataset</p>
-        <p class="kpi-value" data-kpi="datasets">0</p>
-      </div>
-      <div class="kpi-card">
-        <p class="kpi-label">橋梁総数</p>
-        <p class="kpi-value" data-kpi="bridges">0</p>
-      </div>
-      <div class="kpi-card">
-        <p class="kpi-label">総延長 (km)</p>
-        <p class="kpi-value" data-kpi="length">0.0</p>
-      </div>
-      <div class="kpi-card">
-        <p class="kpi-label">要注視（III/IV）</p>
-        <p class="kpi-value" data-kpi="flagged">0</p>
-      </div>
-    </div>
-    <p class="kpi-note" data-kpi-culvert-hint hidden>カルバートを除く</p>
-  </section>
-</section>
-        <section class="panel card filter-panel" aria-labelledby="filter-heading">
-          <div class="panel-header panel-header-tight">
-            <div>
-              <h2 id="filter-heading">フィルタ &amp; 表示設定</h2>
-            </div>
-          </div>
-          <div class="filter-row">
-            <div class="filter-section">
-              <p class="filter-label">橋種カテゴリ</p>
-              <div class="chip-group" role="group" aria-label="橋種フィルタ" data-filter-bridge-types></div>
-            </div>
-            <div class="filter-section">
-              <p class="filter-label">点検判定区分</p>
-              <div class="chip-group" role="group" aria-label="点検判定フィルタ" data-filter-inspections></div>
-            </div>
-            <div class="filter-section filter-section-toggle">
-              <p class="filter-label">表示設定</p>
-              <label class="checkbox-control">
-                <input type="checkbox" data-filter-exclude-culvert />
-                <span>カルバートを除く</span>
-              </label>
-            </div>
-          </div>
-        </section>
-
-        <section class="chart-grid" aria-label="グラフエリア">
-          <article class="panel card chart-card" aria-labelledby="stock-chart-title">
-            <div class="panel-header">
-              <div>
-                <h3 id="stock-chart-title">橋種別ストック構成</h3>
-              </div>
-              <div class="chart-controls">
-                <label class="select-label">
-                  指標:
-                  <select data-stock-mode>
-                    <option value="count">橋梁数</option>
-                    <option value="length">総延長</option>
-                  </select>
-                </label>
-                <label class="select-label">
-                  集計:
-                  <select data-stock-scope>
-                    <option value="bridgeType">橋種別</option>
-                    <option value="dataset">自治体別</option>
-                  </select>
-                </label>
-                <span class="chart-filter-note" data-culvert-hint hidden>カルバートを除く</span>
-              </div>
-            </div>
-            <div class="chart-placeholder">
-              <canvas id="chart-stock" aria-label="橋種別ストック構成"></canvas>
-            </div>
-          </article>
-
-          <article class="panel card chart-card" aria-labelledby="rating-chart-title">
-            <div class="panel-header">
-              <div>
-                <h3 id="rating-chart-title">点検判定区分の分布</h3>
-              </div>
-              <div class="chart-controls">
-                <span class="chart-filter-note" data-culvert-hint hidden>カルバートを除く</span>
-              </div>
-            </div>
-            <div class="chart-placeholder">
-              <canvas id="chart-rating" aria-label="点検判定区分の分布"></canvas>
-            </div>
-          </article>
-
-          <article class="panel card chart-card" aria-labelledby="length-chart-title">
-            <div class="panel-header">
-              <div>
-                <h3 id="length-chart-title">橋長階級ヒストグラム</h3>
-              </div>
-              <div class="chart-controls">
-                <div class="chart-range-inline">
-                  <label class="range-inline-control">
-                    階級幅:
-                    <input
-                      type="range"
-                      min="5"
-                      max="50"
-                      step="5"
-                      value="10"
-                      data-length-bin-range
-                      aria-label="橋長階級幅"
-                    />
-                    <span class="range-inline-value" data-length-bin-label aria-live="polite">10 m</span>
-                  </label>
-                </div>
-                <span class="chart-filter-note" data-culvert-hint hidden>カルバートを除く</span>
-              </div>
-            </div>
-            <div class="chart-placeholder">
-              <canvas id="chart-length" aria-label="橋長階級ヒストグラム"></canvas>
-            </div>
-          </article>
-
-          <article class="panel card chart-card" aria-labelledby="year-chart-title">
-            <div class="panel-header">
-              <div>
-                <h3 id="year-chart-title">架設年度分布</h3>
-              </div>
-              <div class="chart-controls">
-                <label class="select-label">
-                  粒度:
-                  <select data-year-grouping>
-                    <option value="decade">10 年階級</option>
-                    <option value="year">1 年</option>
-                  </select>
-                </label>
-                <span class="chart-filter-note" data-culvert-hint hidden>カルバートを除く</span>
-              </div>
-            </div>
-            <div class="chart-placeholder">
-              <canvas id="chart-year" aria-label="架設年度分布"></canvas>
-            </div>
-          </article>
-
-          <article class="panel card chart-card" aria-labelledby="pc-tension-chart-title">
-            <div class="panel-header">
-              <div>
-                <h3 id="pc-tension-chart-title">PC橋の張力方式別構成</h3>
-              </div>
-              <div class="chart-controls">
-                <span class="chart-filter-note" data-culvert-hint hidden>カルバートを除く</span>
-              </div>
-            </div>
-            <div class="chart-placeholder">
-              <canvas id="chart-pc-tension" aria-label="PC橋の張力方式別構成"></canvas>
-            </div>
-          </article>
-
-          <article class="panel card chart-card" aria-labelledby="pc-post-chart-title">
-            <div class="panel-header">
-              <div>
-                <h3 id="pc-post-chart-title">ポステンPC橋の形式内訳</h3>
-              </div>
-              <div class="chart-controls">
-                <span class="chart-filter-note" data-culvert-hint hidden>カルバートを除く</span>
-              </div>
-            </div>
-            <div class="chart-placeholder">
-              <canvas id="chart-pc-post" aria-label="ポステンPC橋の形式内訳"></canvas>
-            </div>
-          </article>
-        </section>
-
-        <section class="panel card map-panel" aria-labelledby="map-heading">
-          <div class="panel-header">
-            <div>
-              <h2 id="map-heading">地理的分布</h2>
-            </div>
-            <div class="map-controls" aria-label="地図のプロット表示設定">
-              <p class="map-control-label">プロットサイズ</p>
-              <div class="range-display">
-                <span>小</span>
-                <input
-                  type="range"
-                  min="-50"
-                  max="50"
-                  step="5"
-                  value="0"
-                  data-marker-size-range
-                  aria-label="地図上のマーカーサイズ"
-                />
-                <span>大</span>
-              </div>
-              <p class="range-hint">
-                現在: <strong data-marker-size-label>100%</strong> / 50%〜150% の範囲でズーム倍率や密度に応じた見やすさを確保できます。
-              </p>
-            </div>
-          </div>
-          <div class="map-canvas" id="map" role="img" aria-label="橋梁マップ"></div>
-          <p class="map-info">
-            表示中の橋梁: <strong data-map-count>0</strong> 件 /
-            緯度経度欠損: <strong data-map-missing>0</strong> 件
-            <span class="chart-filter-note" data-culvert-hint hidden>カルバートを除く</span>
-          </p>
-          <div class="map-legends">
-            <div>
-              <p class="legend-title">点検判定区分</p>
-              <ul class="legend-list">
-                <li><span class="legend-swatch swatch-i"></span>I（健全）</li>
-                <li><span class="legend-swatch swatch-ii"></span>II（予防保全）</li>
-                <li><span class="legend-swatch swatch-iii"></span>III（早期措置）</li>
-                <li><span class="legend-swatch swatch-iv"></span>IV（緊急措置）</li>
-                <li><span class="legend-swatch swatch-unknown"></span>不明</li>
-              </ul>
-            </div>
-            <div>
-              <p class="legend-title">橋種カテゴリ</p>
-              <ul class="legend-list">
-                <li><span class="legend-shape marker-shape-pc"></span>PC 橋</li>
-                <li><span class="legend-shape marker-shape-rc"></span>RC 橋</li>
-                <li><span class="legend-shape marker-shape-steel"></span>鋼橋</li>
-                <li><span class="legend-shape marker-shape-other"></span>その他</li>
-              </ul>
-            </div>
-          </div>
-        </section>
-
-      </main>
-
-      <footer class="app-footer">
-        <p>自治体橋梁ダッシュボード — ローカル CSV を安全に可視化</p>
-      </footer>
-    </div>
-  </body>
-</html>
+<!DOCTYPE html>
+
+
+
+<html lang="ja">
+
+
+
+  <head>
+
+
+
+    <meta charset="UTF-8" />
+
+
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+
+
+    <title>自治体橋梁ダッシュボード</title>
+
+
+
+    <meta name="description" content="自治体の橋梁データをブラウザだけで可視化できるダッシュボード" />
+
+
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+
+
+
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+
+
+    <link
+
+
+
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap"
+
+
+
+      rel="stylesheet"
+
+
+
+    />
+
+
+
+    <link
+
+
+
+      rel="icon"
+
+
+
+      type="image/svg+xml"
+
+
+
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230068d6'/%3E%3Cpath d='M8 21h16v-2H8zm0-4h16v-2H8zm0-4h16V11H8z' fill='white'/%3E%3C/svg%3E"
+
+
+
+    />
+
+
+
+    <link rel="stylesheet" href="css/styles.css" />
+
+
+
+    <link
+
+
+
+      rel="stylesheet"
+
+
+
+      href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"
+
+
+
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+
+
+
+      crossorigin=""
+
+
+
+    />
+
+
+
+
+
+
+    <link
+
+
+
+      rel="stylesheet"
+
+
+
+
+
+
+    />
+
+
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.fullscreen@2.4.0/Control.FullScreen.css" />
+
+
+
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js" defer></script>
+
+
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
+
+
+
+    <script
+
+
+
+      src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"
+
+
+
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+
+
+
+      crossorigin=""
+
+
+
+      defer
+
+
+
+    ></script>
+
+
+
+
+
+
+    <script src="https://cdn.jsdelivr.net/npm/leaflet.fullscreen@2.4.0/Control.FullScreen.js" defer></script>
+
+
+
+    <script src="js/main.js" defer></script>
+
+
+
+  </head>
+
+
+
+  <body>
+
+
+
+    <div class="app-shell">
+
+
+
+      <header class="app-header">
+
+
+
+        <div class="header-primary">
+
+
+
+          <h1>自治体橋梁ダッシュボード</h1>
+
+
+
+          <p class="lead">
+
+
+
+            自治体ごとの橋梁施設一覧 CSV を読み込むだけで、ストック構成・健全度・橋長や架設年度の傾向、地図上での配置をまとめて確認できる
+
+
+
+            クライアントサイドアプリです。データはブラウザ内で完結し、複数自治体の状況を安全に比較できます。
+
+
+
+          </p>
+
+
+
+        </div>
+
+
+
+      </header>
+
+
+
+
+
+
+
+      <main class="app-main">
+
+
+
+
+
+
+
+<section class="control-grid" aria-label="CSV 読み込みと指標">
+
+
+
+  <article class="panel card loader-panel ingest-panel" aria-label="CSV 読み込みと dataset">
+
+
+
+    <div class="ingest-grid">
+
+
+
+      <section class="ingest-column ingest-upload" aria-labelledby="csv-loader-heading">
+
+
+
+        <h3 class="ingest-subtitle" id="csv-loader-heading">CSV 読み込み</h3>
+
+
+
+        <div class="dropzone" data-dropzone tabindex="0">
+
+
+
+          <div class="dropzone-inner">
+
+
+
+            <p class="dropzone-title">ここに CSV をドラッグ &amp; ドロップ</p>
+
+
+
+          </div>
+
+
+
+        </div>
+
+
+
+        <div class="loader-controls">
+
+
+
+          <label class="file-input-button">
+
+
+
+            <input type="file" accept=".csv,text/csv" multiple data-file-input />
+
+
+
+            <span>CSV ファイルを選択</span>
+
+
+
+          </label>
+
+
+
+        </div>
+
+
+
+      </section>
+
+
+
+      <section class="ingest-column ingest-datasets" aria-labelledby="dataset-heading">
+
+
+
+        <h3 class="ingest-subtitle" id="dataset-heading">読み込み済み dataset</h3>
+
+
+
+        <p class="dataset-empty" data-dataset-empty>dataset はまだありません。CSV を取り込むとここに一覧が表示されます。</p>
+
+
+
+        <ul class="dataset-list" data-dataset-list aria-live="polite"></ul>
+
+
+
+      </section>
+
+
+
+    </div>
+
+
+
+  </article>
+
+
+
+
+
+
+
+  <section class="panel card kpi-panel" aria-label="KPI ハイライト">
+
+
+
+    <div class="kpi-grid">
+
+
+
+      <div class="kpi-card">
+
+
+
+        <p class="kpi-label">アクティブ dataset</p>
+
+
+
+        <p class="kpi-value" data-kpi="datasets">0</p>
+
+
+
+      </div>
+
+
+
+      <div class="kpi-card">
+
+
+
+        <p class="kpi-label">橋梁総数</p>
+
+
+
+        <p class="kpi-value" data-kpi="bridges">0</p>
+
+
+
+      </div>
+
+
+
+      <div class="kpi-card">
+
+
+
+        <p class="kpi-label">総延長 (km)</p>
+
+
+
+        <p class="kpi-value" data-kpi="length">0.0</p>
+
+
+
+      </div>
+
+
+
+      <div class="kpi-card">
+
+
+
+        <p class="kpi-label">要注視（III/IV）</p>
+
+
+
+        <p class="kpi-value" data-kpi="flagged">0</p>
+
+
+
+      </div>
+
+
+
+    </div>
+
+
+
+    <p class="kpi-note" data-kpi-culvert-hint hidden>カルバートを除く</p>
+
+
+
+  </section>
+
+
+
+</section>
+
+
+
+        <section class="panel card filter-panel" aria-labelledby="filter-heading">
+
+
+
+          <div class="panel-header panel-header-tight">
+
+
+
+            <div>
+
+
+
+              <h2 id="filter-heading">フィルタ &amp; 表示設定</h2>
+
+
+
+            </div>
+
+
+
+          </div>
+
+
+
+          <div class="filter-row">
+
+
+
+            <div class="filter-section">
+
+
+
+              <p class="filter-label">橋種カテゴリ</p>
+
+
+
+              <div class="chip-group" role="group" aria-label="橋種フィルタ" data-filter-bridge-types></div>
+
+
+
+            </div>
+
+
+
+            <div class="filter-section">
+
+
+
+              <p class="filter-label">点検判定区分</p>
+
+
+
+              <div class="chip-group" role="group" aria-label="点検判定フィルタ" data-filter-inspections></div>
+
+
+
+            </div>
+
+
+
+            <div class="filter-section filter-section-toggle">
+
+
+
+              <p class="filter-label">表示設定</p>
+
+
+
+              <label class="checkbox-control">
+
+
+
+                <input type="checkbox" data-filter-exclude-culvert />
+
+
+
+                <span>カルバートを除く</span>
+
+
+
+              </label>
+
+
+
+            </div>
+
+
+
+          </div>
+
+
+
+        </section>
+
+
+
+
+
+
+
+        <section class="chart-grid" aria-label="グラフエリア">
+
+
+
+          <article class="panel card chart-card" aria-labelledby="stock-chart-title">
+
+
+
+            <div class="panel-header">
+
+
+
+              <div>
+
+
+
+                <h3 id="stock-chart-title">橋種別ストック構成</h3>
+
+
+
+              </div>
+
+
+
+              <div class="chart-controls">
+
+
+
+                <label class="select-label">
+
+
+
+                  指標:
+
+
+
+                  <select data-stock-mode>
+
+
+
+                    <option value="count">橋梁数</option>
+
+
+
+                    <option value="length">総延長</option>
+
+
+
+                  </select>
+
+
+
+                </label>
+
+
+
+                <label class="select-label">
+
+
+
+                  集計:
+
+
+
+                  <select data-stock-scope>
+
+
+
+                    <option value="bridgeType">橋種別</option>
+
+
+
+                    <option value="dataset">自治体別</option>
+
+
+
+                  </select>
+
+
+
+                </label>
+
+
+
+                <span class="chart-filter-note" data-culvert-hint hidden>カルバートを除く</span>
+
+
+
+              </div>
+
+
+
+            </div>
+
+
+
+            <div class="chart-placeholder">
+
+
+
+              <canvas id="chart-stock" aria-label="橋種別ストック構成"></canvas>
+
+
+
+            </div>
+
+
+
+          </article>
+
+
+
+
+
+
+
+          <article class="panel card chart-card" aria-labelledby="rating-chart-title">
+
+
+
+            <div class="panel-header">
+
+
+
+              <div>
+
+
+
+                <h3 id="rating-chart-title">点検判定区分の分布</h3>
+
+
+
+              </div>
+
+
+
+              <div class="chart-controls">
+
+
+
+                <span class="chart-filter-note" data-culvert-hint hidden>カルバートを除く</span>
+
+
+
+              </div>
+
+
+
+            </div>
+
+
+
+            <div class="chart-placeholder">
+
+
+
+              <canvas id="chart-rating" aria-label="点検判定区分の分布"></canvas>
+
+
+
+            </div>
+
+
+
+          </article>
+
+
+
+
+
+
+
+          <article class="panel card chart-card" aria-labelledby="length-chart-title">
+
+
+
+            <div class="panel-header">
+
+
+
+              <div>
+
+
+
+                <h3 id="length-chart-title">橋長階級ヒストグラム</h3>
+
+
+
+              </div>
+
+
+
+              <div class="chart-controls">
+
+
+
+                <div class="chart-range-inline">
+
+
+
+                  <label class="range-inline-control">
+
+
+
+                    階級幅:
+
+
+
+                    <input
+
+
+
+                      type="range"
+
+
+
+                      min="5"
+
+
+
+                      max="50"
+
+
+
+                      step="5"
+
+
+
+                      value="10"
+
+
+
+                      data-length-bin-range
+
+
+
+                      aria-label="橋長階級幅"
+
+
+
+                    />
+
+
+
+                    <span class="range-inline-value" data-length-bin-label aria-live="polite">10 m</span>
+
+
+
+                  </label>
+
+
+
+                </div>
+
+
+
+                <span class="chart-filter-note" data-culvert-hint hidden>カルバートを除く</span>
+
+
+
+              </div>
+
+
+
+            </div>
+
+
+
+            <div class="chart-placeholder">
+
+
+
+              <canvas id="chart-length" aria-label="橋長階級ヒストグラム"></canvas>
+
+
+
+            </div>
+
+
+
+          </article>
+
+
+
+
+
+
+
+          <article class="panel card chart-card" aria-labelledby="year-chart-title">
+
+
+
+            <div class="panel-header">
+
+
+
+              <div>
+
+
+
+                <h3 id="year-chart-title">架設年度分布</h3>
+
+
+
+              </div>
+
+
+
+              <div class="chart-controls">
+
+
+
+                <label class="select-label">
+
+
+
+                  粒度:
+
+
+
+                  <select data-year-grouping>
+
+
+
+                    <option value="decade">10 年階級</option>
+
+
+
+                    <option value="year">1 年</option>
+
+
+
+                  </select>
+
+
+
+                </label>
+
+
+
+                <span class="chart-filter-note" data-culvert-hint hidden>カルバートを除く</span>
+
+
+
+              </div>
+
+
+
+            </div>
+
+
+
+            <div class="chart-placeholder">
+
+
+
+              <canvas id="chart-year" aria-label="架設年度分布"></canvas>
+
+
+
+            </div>
+
+
+
+          </article>
+
+
+
+
+
+
+
+          <article class="panel card chart-card" aria-labelledby="pc-tension-chart-title">
+
+
+
+            <div class="panel-header">
+
+
+
+              <div>
+
+
+
+                <h3 id="pc-tension-chart-title">PC橋の張力方式別構成</h3>
+
+
+
+              </div>
+
+
+
+              <div class="chart-controls">
+
+
+
+                <span class="chart-filter-note" data-culvert-hint hidden>カルバートを除く</span>
+
+
+
+              </div>
+
+
+
+            </div>
+
+
+
+            <div class="chart-placeholder">
+
+
+
+              <canvas id="chart-pc-tension" aria-label="PC橋の張力方式別構成"></canvas>
+
+
+
+            </div>
+
+
+
+          </article>
+
+
+
+
+
+
+
+          <article class="panel card chart-card" aria-labelledby="pc-post-chart-title">
+
+
+
+            <div class="panel-header">
+
+
+
+              <div>
+
+
+
+                <h3 id="pc-post-chart-title">ポステンPC橋の形式内訳</h3>
+
+
+
+              </div>
+
+
+
+              <div class="chart-controls">
+
+
+
+                <span class="chart-filter-note" data-culvert-hint hidden>カルバートを除く</span>
+
+
+
+              </div>
+
+
+
+            </div>
+
+
+
+            <div class="chart-placeholder">
+
+
+
+              <canvas id="chart-pc-post" aria-label="ポステンPC橋の形式内訳"></canvas>
+
+
+
+            </div>
+
+
+
+          </article>
+
+
+
+        </section>
+
+
+
+
+
+
+
+        <section class="panel card map-panel" aria-labelledby="map-heading">
+
+
+
+          <div class="panel-header">
+
+
+
+            <div>
+
+
+
+              <h2 id="map-heading">地理的分布</h2>
+
+
+
+            </div>
+
+
+
+            <div class="map-controls" aria-label="&#22320;&#22259;&#12398;&#12503;&#12525;&#12483;&#12488;&#34920;&#31034;&#35373;&#23450;">
+
+              <div class="map-control-block">
+
+                <p class="map-control-label">&#12503;&#12525;&#12483;&#12488;&#12469;&#12452;&#12474;</p>
+
+                <div class="range-display">
+
+                  <span>&#23567;</span>
+
+                  <input
+
+                    type="range"
+
+                    min="-50"
+
+                    max="50"
+
+                    step="5"
+
+                    value="0"
+
+                    data-marker-size-range
+
+                    aria-label="&#22320;&#22259;&#19978;&#12398;&#12510;&#12540;&#12459;&#12540;&#12469;&#12452;&#12474;"
+
+                  />
+
+                  <span>&#22823;</span>
+
+                </div>
+
+                <p class="range-hint">
+
+                  &#26082;&#23450;: <strong data-marker-size-label>100%</strong> / 50%&#12316;150% &#12398;&#31684;&#22258;&#12391;&#12474;&#12540;&#12512;&#20855;&#21512;&#12395;&#21512;&#12431;&#12379;&#12390;&#24494;&#35519;&#25972;&#12391;&#12365;&#12414;&#12377;&#12290;
+
+                </p>
+
+              </div>
+
+              <div class="map-control-block">
+
+                <p class="map-control-label" id="base-layer-label">&#12505;&#12540;&#12473;&#12510;&#12483;&#12503;&#20999;&#12426;&#26367;&#12360;</p>
+
+                <select class="map-layer-select" data-base-layer aria-labelledby="base-layer-label">
+
+                  <option value="standard">OpenStreetMap &#27161;&#28310;</option>
+
+                  <option value="positron">CartoDB Positron</option>
+
+                  <option value="darkmatter">CartoDB Dark Matter</option>
+
+                </select>
+
+                <p class="range-hint">&#32972;&#26223;&#12479;&#12452;&#12523;&#12434;&#20999;&#12426;&#26367;&#12360;&#12427;&#12371;&#12392;&#12391;&#27211;&#26753;&#12510;&#12540;&#12459;&#12540;&#12434;&#35211;&#12420;&#12377;&#12367;&#12391;&#12365;&#12414;&#12377;&#12290;</p>
+
+              </div>
+
+            </div>
+
+
+
+          </div>
+
+
+
+          <div class="map-canvas" id="map" role="img" aria-label="橋梁マップ"></div>
+
+
+
+          <p class="map-info">
+
+
+
+            表示中の橋梁: <strong data-map-count>0</strong> 件 /
+
+
+
+            緯度経度欠損: <strong data-map-missing>0</strong> 件
+
+
+
+            <span class="chart-filter-note" data-culvert-hint hidden>カルバートを除く</span>
+
+
+
+          </p>
+
+
+
+          <div class="map-legends">
+
+
+
+            <div>
+
+
+
+              <p class="legend-title">点検判定区分</p>
+
+
+
+              <ul class="legend-list">
+
+
+
+                <li><span class="legend-swatch swatch-i"></span>I（健全）</li>
+
+
+
+                <li><span class="legend-swatch swatch-ii"></span>II（予防保全）</li>
+
+
+
+                <li><span class="legend-swatch swatch-iii"></span>III（早期措置）</li>
+
+
+
+                <li><span class="legend-swatch swatch-iv"></span>IV（緊急措置）</li>
+
+
+
+                <li><span class="legend-swatch swatch-unknown"></span>不明</li>
+
+
+
+              </ul>
+
+
+
+            </div>
+
+
+
+            <div>
+
+
+
+              <p class="legend-title">橋種カテゴリ</p>
+
+
+
+              <ul class="legend-list">
+
+
+
+                <li><span class="legend-shape marker-shape-pc"></span>PC 橋</li>
+
+
+
+                <li><span class="legend-shape marker-shape-rc"></span>RC 橋</li>
+
+
+
+                <li><span class="legend-shape marker-shape-steel"></span>鋼橋</li>
+
+
+
+                <li><span class="legend-shape marker-shape-other"></span>その他</li>
+
+
+
+              </ul>
+
+
+
+            </div>
+
+
+
+          </div>
+
+
+
+        </section>
+
+
+
+
+
+
+
+      </main>
+
+
+
+
+
+
+
+      <footer class="app-footer">
+
+
+
+        <p>自治体橋梁ダッシュボード — ローカル CSV を安全に可視化</p>
+
+
+
+      </footer>
+
+
+
+    </div>
+
+
+
+  </body>
+
+
+
+</html>
+
+
+

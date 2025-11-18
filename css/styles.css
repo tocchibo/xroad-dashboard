@@ -189,7 +189,13 @@ img {
 .ingest-grid {
   display: grid;
   gap: 1.5rem;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+}
+
+@media (max-width: 960px) {
+  .ingest-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .ingest-column {
@@ -432,6 +438,29 @@ img {
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
+}
+
+.dataset-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.dataset-remove {
+  border: none;
+  background: transparent;
+  color: #c2410c;
+  font-size: 1.2rem;
+  line-height: 1;
+  padding: 0.1rem 0.25rem;
+  cursor: pointer;
+  border-radius: 0.35rem;
+}
+
+.dataset-remove:hover,
+.dataset-remove:focus-visible {
+  background: #fff1ec;
+  color: #9a3412;
 }
 
 .switch {
@@ -741,6 +770,14 @@ img {
   border: 1px solid var(--border);
   border-radius: 0.75rem;
   background: var(--surface);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.map-control-block {
+  flex: 1 1 220px;
+  min-width: 220px;
 }
 
 .map-control-label {
@@ -760,6 +797,14 @@ img {
   border-radius: 0;
   clip-path: var(--marker-clip, circle(45% at 50% 50%));
   box-shadow: 0 0 0 2px #fff, 0 4px 8px rgba(15, 23, 42, 0.35);
+}
+
+.map-layer-select {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  padding: 0.45rem 0.75rem;
+  background: #fff;
 }
 
 .marker-shape-pc {
