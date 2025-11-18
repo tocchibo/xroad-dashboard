@@ -149,11 +149,14 @@
       enabled: false,
     },
     pcFilterExpanded: false,
+    filterDrawerOpen: false,
   };
 
   const elements = {
     datasetList: document.querySelector("[data-dataset-list]"),
     datasetEmpty: document.querySelector("[data-dataset-empty]"),
+    datasetToggleList: document.querySelector("[data-dataset-toggle-list]"),
+    datasetToggleEmpty: document.querySelector("[data-dataset-toggle-empty]"),
     dropzone: document.querySelector("[data-dropzone]"),
     fileInput: document.querySelector("[data-file-input]"),
     uploadFeedback: document.querySelector("[data-upload-feedback]"),
@@ -187,6 +190,9 @@
     mapClusterToggle: document.querySelector("[data-map-cluster-toggle]"),
     clusterBlock: document.querySelector("[data-cluster-block]"),
     culvertHints: Array.from(document.querySelectorAll("[data-culvert-hint]")),
+    filterDrawer: document.querySelector("[data-filter-drawer]"),
+    filterDrawerClose: document.querySelector("[data-filter-drawer-close]"),
+    filterDrawerBackdrop: document.querySelector("[data-filter-drawer-backdrop]"),
   };
 
   init();
@@ -194,6 +200,7 @@
   function init() {
     buildFilterChips();
     bindPcFilterControls();
+    bindFilterDrawer();
     bindRangeControl();
     bindSelectControls();
     bindCulvertFilter();
@@ -365,6 +372,112 @@
       chip.disabled = !isEnabled;
       chip.setAttribute("aria-disabled", String(!isEnabled));
     });
+  }
+
+  function bindFilterDrawer() {
+    const drawer = elements.filterDrawer;
+    if (!drawer) return;
+    const toggleButtons = Array.from(document.querySelectorAll("[data-filter-drawer-toggle]"));
+    const closeButton = elements.filterDrawerClose;
+    const backdrop = elements.filterDrawerBackdrop;
+    const inlineMediaQuery =
+      typeof window.matchMedia === "function"
+        ? window.matchMedia("(min-width: 1280px)")
+        : { matches: false };
+    if (backdrop) {
+      backdrop.hidden = true;
+    }
+
+    const isInlineMode = () => Boolean(inlineMediaQuery?.matches);
+
+    const syncBodyClasses = () => {
+      const inlineMode = isInlineMode();
+      document.body.classList.toggle("drawer-inline-mode", inlineMode);
+      document.body.classList.toggle("drawer-inline-open", inlineMode && state.filterDrawerOpen);
+    };
+
+    const syncBackdrop = () => {
+      if (!backdrop) return;
+      if (isInlineMode()) {
+        backdrop.classList.remove("is-active");
+        backdrop.hidden = true;
+        return;
+      }
+      if (state.filterDrawerOpen) {
+        backdrop.hidden = false;
+        backdrop.classList.add("is-active");
+      } else {
+        backdrop.classList.remove("is-active");
+        backdrop.hidden = true;
+      }
+    };
+
+    const updateToggleState = () => {
+      toggleButtons.forEach((button) => {
+        if (!button) return;
+        button.setAttribute("aria-expanded", String(state.filterDrawerOpen));
+        button.classList.toggle("is-active", state.filterDrawerOpen);
+      });
+    };
+
+    const updateDrawerAria = () => {
+      drawer.setAttribute("aria-hidden", String(!state.filterDrawerOpen));
+    };
+
+    const openDrawer = () => {
+      state.filterDrawerOpen = true;
+      drawer.classList.add("is-active");
+      syncBackdrop();
+      syncBodyClasses();
+      updateToggleState();
+      updateDrawerAria();
+    };
+
+    const closeDrawer = () => {
+      state.filterDrawerOpen = false;
+      drawer.classList.remove("is-active");
+      syncBackdrop();
+      syncBodyClasses();
+      updateToggleState();
+      updateDrawerAria();
+    };
+
+    const toggleDrawer = () => {
+      if (state.filterDrawerOpen) closeDrawer();
+      else openDrawer();
+    };
+
+    toggleButtons.forEach((button) => button?.addEventListener("click", toggleDrawer));
+    closeButton?.addEventListener("click", closeDrawer);
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && state.filterDrawerOpen) {
+        closeDrawer();
+      }
+    });
+
+    document.addEventListener("click", (event) => {
+      if (!state.filterDrawerOpen || isInlineMode()) return;
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (drawer.contains(target)) return;
+      if (toggleButtons.some((button) => button?.contains(target))) return;
+      closeDrawer();
+    });
+
+    const handleBreakpointChange = () => {
+      syncBodyClasses();
+      syncBackdrop();
+    };
+
+    if (typeof inlineMediaQuery.addEventListener === "function") {
+      inlineMediaQuery.addEventListener("change", handleBreakpointChange);
+    } else if (typeof inlineMediaQuery.addListener === "function") {
+      inlineMediaQuery.addListener(handleBreakpointChange);
+    }
+
+    closeDrawer();
+    handleBreakpointChange();
   }
 
 
@@ -744,15 +857,54 @@
   }
 
   function updateDatasetList() {
-    if (!elements.datasetList) return;
     const hasDatasets = state.datasets.length > 0;
     if (elements.datasetEmpty) {
       elements.datasetEmpty.hidden = hasDatasets;
     }
-    elements.datasetList.innerHTML = "";
+    if (elements.datasetList) {
+      elements.datasetList.innerHTML = "";
+      if (hasDatasets) {
+        state.datasets.forEach((dataset) => {
+          elements.datasetList.appendChild(createDatasetCard(dataset));
+        });
+      }
+    }
+    renderDatasetToggles();
+  }
+
+  function renderDatasetToggles() {
+    const list = elements.datasetToggleList;
+    if (!list) return;
+    const empty = elements.datasetToggleEmpty;
+    const hasDatasets = state.datasets.length > 0;
+    list.innerHTML = "";
+    if (empty) {
+      empty.hidden = hasDatasets;
+    }
     if (!hasDatasets) return;
     state.datasets.forEach((dataset) => {
-      elements.datasetList.appendChild(createDatasetCard(dataset));
+      const item = document.createElement("li");
+      item.className = "dataset-toggle-item";
+      const name = document.createElement("p");
+      name.className = "dataset-toggle-name";
+      name.textContent = dataset.label;
+      const toggle = document.createElement("label");
+      toggle.className = "switch dataset-toggle-switch";
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = dataset.active;
+      checkbox.addEventListener("change", () => {
+        dataset.active = checkbox.checked;
+        refreshAll();
+      });
+      const slider = document.createElement("span");
+      slider.className = "switch-slider";
+      const srOnly = document.createElement("span");
+      srOnly.className = "sr-only";
+      srOnly.textContent = `${dataset.label} を表示する`;
+      toggle.append(checkbox, slider, srOnly);
+      item.append(name, toggle);
+      list.appendChild(item);
     });
   }
 

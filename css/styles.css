@@ -11,6 +11,7 @@
   --warning: #f4b400;
   --danger: #d93025;
   --chip-bg: #eef2ff;
+  --drawer-width: min(420px, 30vw);
 }
 
 *,
@@ -45,6 +46,7 @@ img {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  transition: padding-left 0.3s ease;
 }
 
 .app-header {
@@ -105,6 +107,210 @@ img {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+}
+
+.drawer-toggle {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1.2rem 0.5rem 1rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  color: var(--text);
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  position: sticky;
+  top: clamp(1rem, 2vw, 1.5rem);
+  z-index: 85;
+  margin-bottom: 1.5rem;
+}
+
+.drawer-toggle.is-active {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.drawer-toggle:hover {
+  border-color: var(--accent-soft);
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.16);
+  transform: translateY(-1px);
+}
+
+.drawer-toggle:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.drawer-toggle-text {
+  display: inline-flex;
+  align-items: center;
+}
+
+.hamburger {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.3rem;
+}
+
+.hamburger span {
+  width: 1.25rem;
+  height: 2px;
+  border-radius: 1px;
+  background: currentColor;
+  display: block;
+}
+
+.filter-drawer {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: min(var(--drawer-width), 90vw);
+  height: 100vh;
+  background: var(--bg);
+  border-right: 1px solid var(--border);
+  box-shadow: 0 40px 80px rgba(15, 23, 42, 0.35);
+  padding: clamp(1.25rem, 4vw, 2.25rem);
+  overflow-y: auto;
+  transform: translateX(-100%);
+  transition: transform 0.3s ease;
+  z-index: 80;
+}
+
+.filter-drawer.is-active {
+  transform: translateX(0);
+}
+
+.filter-drawer-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.filter-drawer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.filter-drawer-header h2 {
+  margin: 0.25rem 0 0;
+}
+
+.filter-drawer-close {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  color: var(--muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.drawer-card {
+  width: 100%;
+}
+
+.drawer-card-header {
+  margin-bottom: 1rem;
+}
+
+.drawer-card-title {
+  margin: 0 0 0.25rem;
+  font-size: 1.1rem;
+}
+
+.drawer-card-description {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.dataset-toggle-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.dataset-toggle-list {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.dataset-toggle-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.dataset-toggle-name {
+  margin: 0;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.dataset-toggle-switch {
+  flex-shrink: 0;
+}
+
+.filter-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  z-index: 70;
+}
+
+.filter-drawer-backdrop.is-active {
+  opacity: 1;
+}
+
+@media (max-width: 640px) {
+  .drawer-toggle {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (min-width: 1280px) {
+  body.drawer-inline-mode .filter-drawer {
+    width: var(--drawer-width);
+    background: var(--card-bg);
+    border-right-color: var(--border);
+    box-shadow: 0 30px 60px rgba(15, 23, 42, 0.15);
+  }
+
+  body.drawer-inline-mode .filter-drawer-backdrop {
+    display: none;
+  }
+
+  body.drawer-inline-mode .filter-drawer-close {
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  }
+
+  body.drawer-inline-mode .app-shell {
+    transition: padding-left 0.3s ease;
+  }
+
+  body.drawer-inline-open .app-shell {
+    padding-left: var(--drawer-width);
+  }
 }
 
 .card {
@@ -682,11 +888,6 @@ img {
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
-}
-
-.pc-filter-card-note {
-  background: #fffdf5;
-  border-color: #facc15;
 }
 
 .pc-filter-card-header h3 {

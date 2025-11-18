@@ -439,6 +439,21 @@
 
 
       <main class="app-main">
+        <button
+          type="button"
+          class="drawer-toggle"
+          data-filter-drawer-toggle
+          aria-controls="filter-drawer-panel"
+          aria-expanded="false"
+          aria-label="フィルタメニューを開閉"
+        >
+          <span class="hamburger" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+          </span>
+          <span class="drawer-toggle-text">フィルタ &amp; 表示設定</span>
+        </button>
 
 
 
@@ -830,242 +845,7 @@
 
 
 
-        <section class="panel card filter-panel" aria-labelledby="filter-heading">
-
-
-
-
-
-
-
-          <div class="panel-header panel-header-tight">
-
-
-
-
-
-
-
-            <div>
-
-
-
-
-
-
-
-              <h2 id="filter-heading">フィルタ &amp; 表示設定</h2>
-
-
-
-
-
-
-
-            </div>
-
-
-
-
-
-
-
-          </div>
-
-
-
-
-
-
-
-          <div class="filter-row">
-
-
-
-
-
-
-
-            <div class="filter-section">
-
-
-
-
-
-
-
-              <p class="filter-label">橋種カテゴリ</p>
-
-
-
-
-
-
-
-              <div class="chip-group" role="group" aria-label="橋種フィルタ" data-filter-bridge-types></div>
-
-
-
-
-
-
-
-            </div>
-
-
-
-
-
-
-
-            <div class="filter-section">
-
-
-
-
-
-
-
-              <p class="filter-label">点検判定区分</p>
-
-
-
-
-
-
-
-              <div class="chip-group" role="group" aria-label="点検判定フィルタ" data-filter-inspections></div>
-
-
-
-
-
-
-
-            </div>
-
-
-
-
-
-
-
-            <div class="filter-section filter-section-toggle">
-
-
-
-
-
-
-
-              <p class="filter-label">表示設定</p>
-
-
-
-
-
-
-
-              <label class="checkbox-control">
-
-
-
-
-
-
-
-                <input type="checkbox" data-filter-exclude-culvert />
-
-
-
-
-
-
-
-                <span>カルバートを除く</span>
-
-
-
-
-
-
-
-              </label>
-
-
-
-
-
-
-
-            </div>
-
-
-
-
-
-
-
-          </div>
-
-
-
-
-
-
-          <div class="pc-filter-stack" aria-labelledby="pc-filter-heading" aria-describedby="pc-filter-note">
-            <div class="pc-filter-header">
-              <div class="pc-filter-actions">
-                <button
-                  type="button"
-                  class="pc-filter-toggle"
-                  data-pc-filter-toggle
-                  aria-expanded="false"
-                >
-                  PC橋詳細フィルタを表示
-                </button>
-                <button type="button" class="ghost-link" data-pc-filter-reset>リセット</button>
-              </div>
-            </div>
-
-            <p class="filter-helper pc-filter-description">
-              PC橋を軸に、張力方式（プレテン / ポステン / 不明）とポステン形式（中空床版 / T桁 / 箱桁 / その他）を段階的に絞り込めます。
-            </p>
-
-            <div class="pc-filter-body" data-pc-filter-body hidden>
-              <div class="pc-filter-grid">
-                <section class="pc-filter-card" aria-labelledby="pc-tension-heading">
-                  <div class="pc-filter-card-header">
-                    <h3 id="pc-tension-heading">張力方式</h3>
-                    <p>PC橋カテゴリをONにした際に操作できます。</p>
-                  </div>
-                  <div class="chip-group chip-group-nested" role="group" aria-label="張力方式フィルタ" data-filter-pc-tension></div>
-                </section>
-
-                <section class="pc-filter-card" aria-labelledby="pc-post-heading">
-                  <div class="pc-filter-card-header">
-                    <h3 id="pc-post-heading">ポステン形式</h3>
-                    <p>張力方式でポステンを選んだ時のみ操作できます。</p>
-                  </div>
-                  <div class="chip-group chip-group-nested" role="group" aria-label="ポステン形式フィルタ" data-filter-pc-post></div>
-                </section>
-
-                <section class="pc-filter-card pc-filter-card-note" aria-labelledby="pc-filter-note-title">
-                  <div class="pc-filter-card-header">
-                    <h3 id="pc-filter-note-title">動作イメージ</h3>
-                    <p>反応速度や導線の説明スペースとして確保。</p>
-                  </div>
-                  <ul class="notes-list pc-filter-notes" id="pc-filter-note">
-                    <li>PC橋カテゴリをONにすると張力方式 / ポステン形式のチップが操作でき、絞り込みが即座に反映されます。</li>
-                    <li>ブレッドクラムは現在の階層選択をリアルタイムに表示し、全件選択・部分選択の違いも把握できます。</li>
-                    <li>選択条件はグラフやマップにも同期され、PC橋の構成把握に特化した分析を行えます。</li>
-                  </ul>
-                </section>
-              </div>
-            </div>
-          </div>
-
-        </section>
+        
 
 
 
@@ -2451,11 +2231,101 @@
 
 
 
-
-
-
-
       </main>
+
+      <aside
+        class="filter-drawer"
+        data-filter-drawer
+        id="filter-drawer-panel"
+        aria-label="フィルタメニュー"
+        aria-hidden="true"
+      >
+        <div class="filter-drawer-inner">
+          <header class="filter-drawer-header">
+            <div>
+              <p class="eyebrow">操作メニュー</p>
+              <h2>フィルタ &amp; dataset</h2>
+            </div>
+            <button
+              type="button"
+              class="filter-drawer-close"
+              data-filter-drawer-close
+              aria-label="ドロワーを閉じる"
+            >
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </header>
+          <section class="panel card drawer-card dataset-toggle-panel" aria-label="dataset 表示設定">
+            <div class="drawer-card-header">
+              <h3 class="drawer-card-title">dataset 表示</h3>
+              <p class="drawer-card-description">読み込んだ dataset の可視化 ON/OFF を一括で切り替えられます。</p>
+            </div>
+            <p class="dataset-toggle-empty" data-dataset-toggle-empty>dataset はまだありません。</p>
+            <ul class="dataset-toggle-list" data-dataset-toggle-list aria-live="polite"></ul>
+          </section>
+          <section class="panel card filter-panel" aria-labelledby="filter-heading">
+            <div class="panel-header panel-header-tight">
+              <div>
+                <h2 id="filter-heading">フィルタ &amp; 表示設定</h2>
+              </div>
+            </div>
+            <div class="filter-row">
+              <div class="filter-section">
+                <p class="filter-label">橋種カテゴリ</p>
+                <div class="chip-group" role="group" aria-label="橋種フィルタ" data-filter-bridge-types></div>
+              </div>
+              <div class="filter-section">
+                <p class="filter-label">点検判定区分</p>
+                <div class="chip-group" role="group" aria-label="点検判定フィルタ" data-filter-inspections></div>
+              </div>
+              <div class="filter-section filter-section-toggle">
+                <p class="filter-label">表示設定</p>
+                <label class="checkbox-control">
+                  <input type="checkbox" data-filter-exclude-culvert />
+                  <span>カルバートを除く</span>
+                </label>
+              </div>
+            </div>
+            <div class="pc-filter-stack" aria-labelledby="pc-filter-heading" aria-describedby="pc-filter-note">
+              <div class="pc-filter-header">
+                <div class="pc-filter-actions">
+                  <button
+                    type="button"
+                    class="pc-filter-toggle"
+                    data-pc-filter-toggle
+                    aria-expanded="false"
+                  >
+                    PC橋詳細フィルタを表示
+                  </button>
+                  <button type="button" class="ghost-link" data-pc-filter-reset>リセット</button>
+                </div>
+              </div>
+              <p class="filter-helper pc-filter-description">
+                PC橋を軸に、張力方式（プレテン / ポステン / 不明）とポステン形式（中空床版 / T桁 / 箱桁 / その他）を段階的に絞り込めます。
+              </p>
+              <div class="pc-filter-body" data-pc-filter-body hidden>
+                <div class="pc-filter-grid">
+                  <section class="pc-filter-card" aria-labelledby="pc-tension-heading">
+                    <div class="pc-filter-card-header">
+                      <h3 id="pc-tension-heading">張力方式</h3>
+                      <p>PC橋カテゴリをONにした際に操作できます。</p>
+                    </div>
+                    <div class="chip-group chip-group-nested" role="group" aria-label="張力方式フィルタ" data-filter-pc-tension></div>
+                  </section>
+                  <section class="pc-filter-card" aria-labelledby="pc-post-heading">
+                    <div class="pc-filter-card-header">
+                      <h3 id="pc-post-heading">ポステン形式</h3>
+                      <p>張力方式でポステンを選んだ時のみ操作できます。</p>
+                    </div>
+                    <div class="chip-group chip-group-nested" role="group" aria-label="ポステン形式フィルタ" data-filter-pc-post></div>
+                  </section>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </aside>
+      <div class="filter-drawer-backdrop" data-filter-drawer-backdrop hidden></div>
 
 
 
@@ -2512,7 +2382,6 @@
 
 
 </html>
-
 
 
 
