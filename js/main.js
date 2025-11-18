@@ -132,6 +132,8 @@
     },
     map: null,
     mapLayer: null,
+    clusterLayer: null,
+    activeMarkerLayer: null,
     mapBaseLayers: {},
     activeBaseLayer: null,
     selectedBaseLayer: "standard",
@@ -139,6 +141,9 @@
     prevMapCount: 0,
     lastUploadSummaries: [],
     mapMarkerScale: MAP_MARKER_BASE_SCALE,
+    cluster: {
+      enabled: false,
+    },
   };
 
   const elements = {
@@ -169,6 +174,8 @@
     mapSizeRange: document.querySelector("[data-marker-size-range]"),
     mapSizeLabel: document.querySelector("[data-marker-size-label]"),
     baseLayerSelect: document.querySelector("[data-base-layer]"),
+    mapClusterToggle: document.querySelector("[data-map-cluster-toggle]"),
+    clusterBlock: document.querySelector("[data-cluster-block]"),
     culvertHints: Array.from(document.querySelectorAll("[data-culvert-hint]")),
   };
 
@@ -180,6 +187,7 @@
     bindSelectControls();
     bindCulvertFilter();
     bindMapControls();
+    bindClusterControls();
     bindBaseLayerSelect();
     bindDropzone();
     bindLogClear();
@@ -274,6 +282,18 @@
     });
     const initialDelta = Number(range.value);
     applyValue(Number.isFinite(initialDelta) ? initialDelta : 0);
+  }
+
+  function bindClusterControls() {
+    const toggle = elements.mapClusterToggle;
+    if (!toggle) return;
+    toggle.checked = state.cluster.enabled;
+    toggle.addEventListener("change", (event) => {
+      state.cluster.enabled = Boolean(event.currentTarget.checked);
+      updateClusterControlState();
+      updateMap();
+    });
+    updateClusterControlState();
   }
 
   function bindBaseLayerSelect() {
@@ -1047,6 +1067,19 @@
     });
   }
 
+  function updateClusterControlState() {
+    const available = Boolean(state.clusterLayer);
+    const toggle = elements.mapClusterToggle;
+    if (toggle) {
+      if (!available) {
+        state.cluster.enabled = false;
+      }
+      toggle.disabled = !available;
+      toggle.checked = Boolean(state.cluster.enabled && available);
+    }
+    elements.clusterBlock?.classList.toggle("is-disabled", !available);
+  }
+
   function createBaseLayers() {
     const layers = {};
     if (!window.L) return layers;
@@ -1054,6 +1087,11 @@
       layers[key] = window.L.tileLayer(config.url, { ...(config.options || {}) });
     });
     return layers;
+  }
+
+  function getMarkerLayer(useCluster) {
+    if (useCluster && state.clusterLayer) return state.clusterLayer;
+    return state.mapLayer;
   }
 
   function setBaseLayer(layerKey) {
@@ -1069,12 +1107,27 @@
     }
   }
 
+  function shouldUseCluster() {
+    return Boolean(state.clusterLayer && state.cluster.enabled);
+  }
+
   function updateMap() {
-    if (!state.map || !state.mapLayer) return;
+    if (!state.map || (!state.mapLayer && !state.clusterLayer)) return;
     const records = getFilteredRecords();
     const withCoords = [];
     let missing = 0;
-    state.mapLayer.clearLayers();
+    const useCluster = shouldUseCluster();
+    const targetLayer = getMarkerLayer(useCluster);
+    if (!targetLayer) return;
+    state.mapLayer?.clearLayers();
+    state.clusterLayer?.clearLayers();
+    if (state.activeMarkerLayer !== targetLayer) {
+      if (state.activeMarkerLayer) {
+        state.map.removeLayer(state.activeMarkerLayer);
+      }
+      targetLayer.addTo(state.map);
+      state.activeMarkerLayer = targetLayer;
+    }
     records.forEach((record) => {
       if (Number.isFinite(record.lat) && Number.isFinite(record.lng)) {
         const marker = window.L.marker([record.lat, record.lng], {
@@ -1082,7 +1135,7 @@
           keyboard: false,
         });
         marker.bindPopup(createPopupContent(record));
-        state.mapLayer.addLayer(marker);
+        targetLayer.addLayer(marker);
         withCoords.push(record);
       } else {
         missing += 1;
@@ -1161,7 +1214,24 @@
         titleCancel: "全画面を終了",
       }).addTo(state.map);
     }
-    state.mapLayer = window.L.layerGroup().addTo(state.map);
+    state.mapLayer = window.L.layerGroup();
+    state.mapLayer.addTo(state.map);
+    state.activeMarkerLayer = state.mapLayer;
+    if (window.L.markerClusterGroup) {
+      state.clusterLayer = window.L.markerClusterGroup({
+        chunkedLoading: true,
+        showCoverageOnHover: false,
+        spiderfyOnMaxZoom: true,
+        removeOutsideVisibleBounds: true,
+      });
+    } else {
+      state.cluster.enabled = false;
+      addLog("Leaflet.markercluster が利用できません。", "warning");
+    }
+    updateClusterControlState();
+    state.map.on("zoomend", () => {
+      updateMap();
+    });
   }
 
   function getFilteredRecords(options = {}) {
