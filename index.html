@@ -48,96 +48,74 @@
 
       <main class="app-main">
 
-<section class="control-grid" aria-label="CSV 読み込みと設定エリア">
-  <article class="panel card loader-panel" aria-labelledby="csv-loader-heading">
-    <div class="panel-header">
-      <div>
-        <p class="eyebrow">STEP 1</p>
-        <h2 id="csv-loader-heading">CSV 読み込み</h2>
-      </div>
-      <p class="panel-description">xROAD の橋梁リスト(7号調書)から書き出した CSV をここで読み込みます。複数ファイルをまとめて追加すると一覧に比較できます。</p>
-    </div>
-    <div class="loader-content">
-      <div class="loader-actions">
+<section class="control-grid" aria-label="CSV 読み込みと指標">
+  <article class="panel card loader-panel ingest-panel" aria-label="CSV 読み込みと dataset">
+    <div class="ingest-grid">
+      <section class="ingest-column ingest-upload" aria-labelledby="csv-loader-heading">
+        <h3 class="ingest-subtitle" id="csv-loader-heading">CSV 読み込み</h3>
+        <div class="dropzone" data-dropzone tabindex="0">
+          <div class="dropzone-inner">
+            <p class="dropzone-title">ここに CSV をドラッグ &amp; ドロップ</p>
+          </div>
+        </div>
         <div class="loader-controls">
           <label class="file-input-button">
             <input type="file" accept=".csv,text/csv" multiple data-file-input />
             <span>CSV ファイルを選択</span>
           </label>
         </div>
-        <p class="loader-hint">ドラッグ＆ドロップや複数選択にも対応し、読み込みはブラウザ内ですぐに完了します。</p>
-        <p class="loader-hint">1 ファイルを自治体単位でまとめておくと、そのままグラフへ反映しやすくなります。</p>
-      </div>
-      <div class="dropzone" data-dropzone tabindex="0">
-        <div class="dropzone-inner">
-          <p class="dropzone-title">ここに CSV をドラッグ &amp; ドロップ</p>
-          <p class="dropzone-hint">取り込みが完了するとすぐに指標や地図へ反映されます。</p>
-        </div>
-      </div>
+      </section>
+      <section class="ingest-column ingest-datasets" aria-labelledby="dataset-heading">
+        <h3 class="ingest-subtitle" id="dataset-heading">読み込み済み dataset</h3>
+        <p class="dataset-empty" data-dataset-empty>dataset はまだありません。CSV を取り込むとここに一覧が表示されます。</p>
+        <ul class="dataset-list" data-dataset-list aria-live="polite"></ul>
+      </section>
     </div>
   </article>
 
-  <article class="panel card dataset-panel" aria-labelledby="dataset-heading">
-    <div class="panel-header panel-header-tight">
-      <div>
-        <p class="eyebrow">STEP 2</p>
-        <h2 id="dataset-heading">読み込み済み dataset</h2>
+  <section class="panel card kpi-panel" aria-label="KPI ハイライト">
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <p class="kpi-label">アクティブ dataset</p>
+        <p class="kpi-value" data-kpi="datasets">0</p>
       </div>
-      <p class="panel-description">ファイル名、自治体名、橋梁数、延長、点検推奨範囲などを ON/OFF で切り替えられ、切り替えはチャート・地図にも反映されます。</p>
-    </div>
-    <p class="dataset-empty" data-dataset-empty>dataset はまだありません。CSV を取り込むとここに一覧が表示されます。</p>
-    <ul class="dataset-list" data-dataset-list aria-live="polite"></ul>
-  </article>
-
-  <article class="panel card filter-panel" aria-labelledby="filter-heading">
-    <div class="panel-header panel-header-tight">
-      <div>
-        <p class="eyebrow">STEP 3</p>
-        <h2 id="filter-heading">フィルタ & 表示設定</h2>
+      <div class="kpi-card">
+        <p class="kpi-label">橋梁総数</p>
+        <p class="kpi-value" data-kpi="bridges">0</p>
       </div>
-      <p class="panel-description">橋種や点検判定区分、チャートの集計単位を切り替えて、知りたい条件だけに絞り込めます。</p>
+      <div class="kpi-card">
+        <p class="kpi-label">総延長 (km)</p>
+        <p class="kpi-value" data-kpi="length">0.0</p>
+      </div>
+      <div class="kpi-card">
+        <p class="kpi-label">要注視（III/IV）</p>
+        <p class="kpi-value" data-kpi="flagged">0</p>
+      </div>
     </div>
-    <div class="filter-section">
-      <p class="filter-label">橋種カテゴリ</p>
-      <div class="chip-group" role="group" aria-label="橋種フィルタ" data-filter-bridge-types></div>
-    </div>
-    <div class="filter-section">
-      <p class="filter-label">点検判定区分</p>
-      <div class="chip-group" role="group" aria-label="点検判定フィルタ" data-filter-inspections></div>
-    </div>
-    <div class="filter-section filter-section-sub">
-      <p class="filter-label">表示設定</p>
-      <label class="checkbox-control">
-        <input type="checkbox" data-filter-exclude-culvert />
-        <span>カルバートを除く</span>
-      </label>
-      <p class="filter-note">橋種・カルバート形式の橋梁を全体集計から除外します。</p>
-    </div>
-  </article>
+    <p class="kpi-note" data-kpi-culvert-hint hidden>カルバートを除く</p>
+  </section>
 </section>
-
-
-        <section class="panel card kpi-panel" aria-label="KPI ハイライト">
-          <div class="kpi-grid">
-            <div class="kpi-card">
-              <p class="kpi-label">アクティブ dataset</p>
-              <p class="kpi-value" data-kpi="datasets">0</p>
-              <p class="kpi-hint">読み込み済み dataset のうち ON になっている件数</p>
+        <section class="panel card filter-panel" aria-labelledby="filter-heading">
+          <div class="panel-header panel-header-tight">
+            <div>
+              <h2 id="filter-heading">フィルタ &amp; 表示設定</h2>
             </div>
-            <div class="kpi-card">
-              <p class="kpi-label">橋梁総数</p>
-              <p class="kpi-value" data-kpi="bridges">0</p>
-              <p class="kpi-hint">フィルタ後の橋梁数</p>
+          </div>
+          <div class="filter-row">
+            <div class="filter-section">
+              <p class="filter-label">橋種カテゴリ</p>
+              <div class="chip-group" role="group" aria-label="橋種フィルタ" data-filter-bridge-types></div>
             </div>
-            <div class="kpi-card">
-              <p class="kpi-label">総延長 (km)</p>
-              <p class="kpi-value" data-kpi="length">0.0</p>
-              <p class="kpi-hint">橋長(m) を km に換算した合計</p>
+            <div class="filter-section">
+              <p class="filter-label">点検判定区分</p>
+              <div class="chip-group" role="group" aria-label="点検判定フィルタ" data-filter-inspections></div>
             </div>
-            <div class="kpi-card">
-              <p class="kpi-label">要注視（III/IV）</p>
-              <p class="kpi-value" data-kpi="flagged">0</p>
-              <p class="kpi-hint">判定区分 III / IV に該当する橋梁数</p>
+            <div class="filter-section filter-section-toggle">
+              <p class="filter-label">表示設定</p>
+              <label class="checkbox-control">
+                <input type="checkbox" data-filter-exclude-culvert />
+                <span>カルバートを除く</span>
+              </label>
             </div>
           </div>
         </section>
@@ -208,7 +186,6 @@
                     />
                     <span class="range-inline-value" data-length-bin-label aria-live="polite">10 m</span>
                   </label>
-                  <p class="chart-range-inline-hint">10 m 刻みは橋長分布を把握する際の目安です。</p>
                 </div>
                 <span class="chart-filter-note" data-culvert-hint hidden>カルバートを除く</span>
               </div>
@@ -277,9 +254,6 @@
               <p class="eyebrow">ロケーション</p>
               <h2 id="map-heading">地理的分布</h2>
             </div>
-            <p class="panel-description">
-              地図上に橋梁をプロットし、判定区分は色、橋種は形状で表現します。自治体ごとの表示切替は dataset カードから行えます。
-            </p>
             <div class="map-controls" aria-label="地図のプロット表示設定">
               <p class="map-control-label">プロットサイズ</p>
               <div class="range-display">
@@ -340,7 +314,6 @@
             <li>CSV はブラウザ内でのみ扱い、ページを閉じると読み込み内容はリセットされます。</li>
             <li>同じファイルを再度読み込むと別 dataset として追加されます。重複が不要な場合は dataset リストで OFF にしてください。</li>
             <li>緯度・経度が入力されていない橋梁は地図には表示されませんが、グラフ集計には含まれます。</li>
-            <li>橋種や判定区分の表記揺れは可能な範囲で自動調整されますが、正確な値を入力するほど結果が安定します。</li>
           </ul>
         </section>
       </main>

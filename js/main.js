@@ -125,6 +125,7 @@
       length: document.querySelector('[data-kpi="length"]'),
       flagged: document.querySelector('[data-kpi="flagged"]'),
     },
+    kpiCulvertHint: document.querySelector("[data-kpi-culvert-hint]"),
     mapCount: document.querySelector("[data-map-count]"),
     mapMissing: document.querySelector("[data-map-missing]"),
     mapSizeRange: document.querySelector("[data-marker-size-range]"),
@@ -551,10 +552,6 @@
     const title = document.createElement("p");
     title.className = "dataset-name";
     title.textContent = dataset.label;
-    const badge = document.createElement("span");
-    badge.className = "tag tag-outline";
-    badge.textContent = dataset.fileName;
-    title.appendChild(badge);
 
     const toggle = document.createElement("label");
     toggle.className = "switch";
@@ -574,38 +571,32 @@
 
     header.append(title, toggle);
 
-    const meta = document.createElement("p");
-    meta.className = "dataset-meta";
-    meta.textContent = `${formatNumber(dataset.stats.bridgeCount)} 橋 / ${dataset.stats.totalLengthKm.toFixed(
-      2
-    )} km ・ 最終更新 ${dataset.lastUpdated}`;
+    const summary = document.createElement("div");
+    summary.className = "dataset-summary";
+    const bridgeCountStat = createDatasetStat("橋梁数", formatNumber(dataset.stats.bridgeCount));
+    const flaggedRate = dataset.stats.bridgeCount ? dataset.stats.flagged / dataset.stats.bridgeCount : 0;
+    const flaggedStat = createDatasetStat(
+      "III/IV",
+      `${formatNumber(dataset.stats.flagged)} (${formatPercent(flaggedRate)})`
+    );
+    const missingStat = createDatasetStat("座標欠損", formatNumber(dataset.stats.missingCoords));
+    summary.append(bridgeCountStat, flaggedStat, missingStat);
 
-    const tags = document.createElement("div");
-    tags.className = "dataset-tags";
-    tags.append(createTag(`III/IV ${dataset.stats.flagged}`, "tag-success"));
-    tags.append(createTag(dataset.stats.yearRange));
-    tags.append(createTag(`座標欠損 ${dataset.stats.missingCoords}`, "tag-muted"));
-
-    const progress = document.createElement("div");
-    progress.className = "progress";
-    const progressInner = document.createElement("span");
-    progressInner.style.width = `${Math.round(dataset.stats.inspectionRate * 100)}%`;
-    progress.append(progressInner);
-
-    const progressLabel = document.createElement("p");
-    progressLabel.className = "progress-label";
-    progressLabel.textContent = `点検完了率 ${Math.round(dataset.stats.inspectionRate * 100)}%`;
-
-    item.append(header, meta, tags, progress, progressLabel);
+    item.append(header, summary);
     return item;
   }
 
-  function createTag(text, modifier) {
-    const span = document.createElement("span");
-    span.className = "tag";
-    if (modifier) span.classList.add(modifier);
-    span.textContent = text;
-    return span;
+  function createDatasetStat(label, value) {
+    const wrapper = document.createElement("div");
+    wrapper.className = "dataset-stat";
+    const labelEl = document.createElement("p");
+    labelEl.className = "dataset-stat-label";
+    labelEl.textContent = label;
+    const valueEl = document.createElement("p");
+    valueEl.className = "dataset-stat-value";
+    valueEl.textContent = value;
+    wrapper.append(labelEl, valueEl);
+    return wrapper;
   }
 
   function updateKpis() {
@@ -614,10 +605,14 @@
     const totalLengthKm = records.reduce((sum, record) => sum + (record.bridgeLengthM || 0), 0) / 1000;
     const flagged = records.filter((record) => record.inspectionLevel === "III" || record.inspectionLevel === "IV")
       .length;
+    const flaggedRate = records.length ? flagged / records.length : 0;
     setText(elements.kpis.datasets, formatNumber(activeDatasets.length));
     setText(elements.kpis.bridges, formatNumber(records.length));
     setText(elements.kpis.length, totalLengthKm.toFixed(2));
-    setText(elements.kpis.flagged, formatNumber(flagged));
+    setText(elements.kpis.flagged, `${formatNumber(flagged)} (${formatPercent(flaggedRate)})`);
+    if (elements.kpiCulvertHint) {
+      elements.kpiCulvertHint.hidden = !state.filters.excludeCulvert;
+    }
   }
 
   function updateCharts() {
@@ -1145,6 +1140,13 @@
 
   function formatNumber(value) {
     return Number.isFinite(value) ? value.toLocaleString("ja-JP") : "0";
+  }
+
+  function formatPercent(value) {
+    if (!Number.isFinite(value)) return "0%";
+    const percentage = value * 100;
+    const digits = percentage >= 10 ? 0 : 1;
+    return `${percentage.toFixed(digits)}%`;
   }
 
   function parseNumber(value) {
