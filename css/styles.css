@@ -811,24 +811,6 @@ img {
   background: #fff;
 }
 
-.marker-cluster {
-  background: rgba(37, 99, 235, 0.2) !important;
-  border: 2px solid #fff !important;
-  color: #fff;
-}
-
-.marker-cluster div {
-  background: #2563eb !important;
-  color: #fff !important;
-  border-radius: 50%;
-  border: 2px solid #fff;
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
-}
-
-.marker-cluster span {
-  font-weight: 600;
-  color: #fff;
-}
 
 .marker-shape-pc {
   --marker-clip: inset(0);
