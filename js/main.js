@@ -73,6 +73,8 @@
   ];
 
   const PC_POST_COLORS = ["#0ea5e9", "#f97316", "#10b981", "#94a3b8"];
+  const PC_TENSION_KEYS = new Set(PC_TENSION_SEGMENTS.map((segment) => segment.key));
+  const PC_POST_KEYS = new Set(PC_POST_SEGMENTS.map((segment) => segment.key));
 
   const DATASET_COLORS = ["#0ea5e9", "#10b981", "#f97316", "#ec4899", "#6366f1", "#14b8a6"];
   const DEFAULT_MAP_CENTER = [36.2048, 138.2529];
@@ -121,6 +123,8 @@
       stockScope: "bridgeType",
       yearGrouping: "decade",
       excludeCulvert: false,
+      pcTension: new Set(PC_TENSION_SEGMENTS.map((segment) => segment.key)),
+      pcPost: new Set(PC_POST_SEGMENTS.map((segment) => segment.key)),
     },
     charts: {
       stock: null,
@@ -144,6 +148,7 @@
     cluster: {
       enabled: false,
     },
+    pcFilterExpanded: false,
   };
 
   const elements = {
@@ -157,6 +162,11 @@
     bridgeTypeFilter: document.querySelector("[data-filter-bridge-types]"),
     inspectionFilter: document.querySelector("[data-filter-inspections]"),
     culvertFilter: document.querySelector("[data-filter-exclude-culvert]"),
+    pcFilterToggle: document.querySelector("[data-pc-filter-toggle]"),
+    pcFilterBody: document.querySelector("[data-pc-filter-body]"),
+    pcFilterReset: document.querySelector("[data-pc-filter-reset]"),
+    pcTensionFilter: document.querySelector("[data-filter-pc-tension]"),
+    pcPostFilter: document.querySelector("[data-filter-pc-post]"),
     lengthBinRange: document.querySelector("[data-length-bin-range]"),
     lengthBinLabel: document.querySelector("[data-length-bin-label]"),
     stockModeSelect: document.querySelector("[data-stock-mode]"),
@@ -183,6 +193,7 @@
 
   function init() {
     buildFilterChips();
+    bindPcFilterControls();
     bindRangeControl();
     bindSelectControls();
     bindCulvertFilter();
@@ -212,7 +223,13 @@
         chip.className = "chip is-active";
         chip.dataset.value = type;
         chip.textContent = type;
-        chip.addEventListener("click", () => toggleFilter(state.filters.bridgeTypes, type, chip));
+        chip.setAttribute("aria-pressed", "true");
+        chip.addEventListener("click", () => {
+          toggleFilter(state.filters.bridgeTypes, type, chip);
+          if (type === "PC橋") {
+            updatePcFilterUI();
+          }
+        });
         elements.bridgeTypeFilter.appendChild(chip);
       });
     }
@@ -223,22 +240,133 @@
         chip.className = "chip is-active";
         chip.dataset.value = level;
         chip.textContent = getInspectionLabel(level);
+        chip.setAttribute("aria-pressed", "true");
         chip.addEventListener("click", () => toggleFilter(state.filters.inspectionLevels, level, chip));
         elements.inspectionFilter.appendChild(chip);
       });
     }
+    buildPcFilterChips();
+    updatePcFilterUI();
   }
 
   function toggleFilter(set, value, chipEl) {
     if (set.has(value)) {
       set.delete(value);
-      chipEl.classList.remove("is-active");
     } else {
       set.add(value);
-      chipEl.classList.add("is-active");
+    }
+    if (chipEl) {
+      const isActive = set.has(value);
+      chipEl.classList.toggle("is-active", isActive);
+      chipEl.setAttribute("aria-pressed", String(isActive));
     }
     refreshAll();
   }
+
+  function buildPcFilterChips() {
+    if (elements.pcTensionFilter) {
+      elements.pcTensionFilter.innerHTML = "";
+      PC_TENSION_SEGMENTS.forEach((segment) => {
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "chip";
+        chip.dataset.value = segment.key;
+        chip.textContent = segment.label;
+        chip.setAttribute("aria-pressed", String(state.filters.pcTension.has(segment.key)));
+        chip.addEventListener("click", () => handlePcTensionToggle(segment.key, chip));
+        elements.pcTensionFilter.appendChild(chip);
+      });
+    }
+    if (elements.pcPostFilter) {
+      elements.pcPostFilter.innerHTML = "";
+      PC_POST_SEGMENTS.forEach((segment) => {
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "chip";
+        chip.dataset.value = segment.key;
+        chip.textContent = segment.label;
+        chip.setAttribute("aria-pressed", String(state.filters.pcPost.has(segment.key)));
+        chip.addEventListener("click", () => handlePcPostToggle(segment.key, chip));
+        elements.pcPostFilter.appendChild(chip);
+      });
+    }
+  }
+
+  function bindPcFilterControls() {
+    const toggle = elements.pcFilterToggle;
+    const body = elements.pcFilterBody;
+    if (toggle && body) {
+      toggle.addEventListener("click", () => {
+        state.pcFilterExpanded = !state.pcFilterExpanded;
+        updatePcFilterVisibility();
+      });
+      updatePcFilterVisibility();
+    }
+    if (elements.pcFilterReset) {
+      elements.pcFilterReset.addEventListener("click", () => {
+        resetPcFilters();
+      });
+    }
+  }
+
+  function updatePcFilterVisibility() {
+    const body = elements.pcFilterBody;
+    const toggle = elements.pcFilterToggle;
+    if (!body || !toggle) return;
+    const expanded = Boolean(state.pcFilterExpanded);
+    body.hidden = !expanded;
+    toggle.setAttribute("aria-expanded", String(expanded));
+    toggle.textContent = expanded ? "PC橋詳細フィルタを隠す" : "PC橋詳細フィルタを表示";
+  }
+
+  function resetPcFilters() {
+    state.filters.pcTension = new Set(PC_TENSION_SEGMENTS.map((segment) => segment.key));
+    state.filters.pcPost = new Set(PC_POST_SEGMENTS.map((segment) => segment.key));
+    updatePcFilterUI();
+    refreshAll();
+  }
+
+  function handlePcTensionToggle(value, chip) {
+    if (chip?.disabled) return;
+    toggleSetSelection(state.filters.pcTension, value);
+    refreshAll();
+    updatePcFilterUI();
+  }
+
+  function handlePcPostToggle(value, chip) {
+    if (chip?.disabled) return;
+    toggleSetSelection(state.filters.pcPost, value);
+    refreshAll();
+    updatePcFilterUI();
+  }
+
+  function toggleSetSelection(set, value) {
+    if (set.has(value)) {
+      set.delete(value);
+    } else {
+      set.add(value);
+    }
+  }
+
+  function updatePcFilterUI() {
+    const pcActive = state.filters.bridgeTypes.has("PC橋");
+    const postEnabled = pcActive && state.filters.pcTension.has("posttension");
+    syncPcChips(elements.pcTensionFilter, state.filters.pcTension, pcActive);
+    syncPcChips(elements.pcPostFilter, state.filters.pcPost, postEnabled);
+  }
+
+  function syncPcChips(container, activeSet, isEnabled) {
+    if (!container) return;
+    container.querySelectorAll("button").forEach((chip) => {
+      const value = chip.dataset.value;
+      const isActive = activeSet.has(value);
+      chip.classList.toggle("is-active", isActive);
+      chip.setAttribute("aria-pressed", String(isActive));
+      chip.disabled = !isEnabled;
+      chip.setAttribute("aria-disabled", String(!isEnabled));
+    });
+  }
+
 
   function bindRangeControl() {
     const range = elements.lengthBinRange;
@@ -559,6 +687,16 @@
       }
     }
     return { tensionType, postCategory };
+  }
+
+  function resolvePcTensionKey(value) {
+    if (!value || !PC_TENSION_KEYS.has(value)) return "other";
+    return value;
+  }
+
+  function resolvePcPostKey(value) {
+    if (!value || !PC_POST_KEYS.has(value)) return "other";
+    return value;
   }
 
   function detectCulvert(superstructureType, superstructureForm) {
@@ -1237,12 +1375,20 @@
   function getFilteredRecords(options = {}) {
     const { skipCulvertFilter = false } = options;
     const activeDatasetIds = new Set(state.datasets.filter((dataset) => dataset.active).map((dataset) => dataset.id));
-    const { bridgeTypes, inspectionLevels } = state.filters;
+    const { bridgeTypes, inspectionLevels, pcTension, pcPost } = state.filters;
     const records = [];
     state.datasets.forEach((dataset) => {
       if (!activeDatasetIds.has(dataset.id)) return;
       dataset.records.forEach((record) => {
         if (!bridgeTypes.has(record.bridgeType)) return;
+        if (record.bridgeType === "PC橋") {
+          const tensionKey = resolvePcTensionKey(record.pcTensionType);
+          if (!pcTension.has(tensionKey)) return;
+          if (tensionKey === "posttension") {
+            const postKey = resolvePcPostKey(record.pcPostCategory);
+            if (!pcPost.has(postKey)) return;
+          }
+        }
         if (!inspectionLevels.has(record.inspectionLevel)) return;
         if (!skipCulvertFilter && state.filters.excludeCulvert && record.isCulvert) return;
         records.push(record);

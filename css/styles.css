@@ -545,6 +545,23 @@ img {
   border: 1px dashed #c9cce2;
 }
 
+.chip[disabled],
+.chip.is-disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.chip-group-nested .chip {
+  background: #fff;
+  border: 1px solid var(--border);
+}
+
+.chip-group-nested .chip.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
 .filter-row {
   display: flex;
   flex-wrap: wrap;
@@ -578,6 +595,113 @@ img {
 .filter-label {
   margin: 0 0 0.35rem;
   font-weight: 600;
+}
+
+.filter-helper {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.pc-filter-stack {
+  margin-top: 1rem;
+  padding-top: 1.25rem;
+  border-top: 1px dashed var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.pc-filter-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.pc-filter-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.pc-filter-toggle {
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 999px;
+  padding: 0.4rem 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.pc-filter-toggle[aria-expanded="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.ghost-link {
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font-weight: 600;
+  padding: 0;
+  cursor: pointer;
+}
+
+.ghost-link[disabled] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.pc-filter-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.pc-filter-body[hidden] {
+  display: none;
+}
+
+.pc-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.pc-filter-card {
+  border: 1px dashed var(--border);
+  border-radius: 0.9rem;
+  padding: 1.2rem;
+  background: #fbfcff;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.pc-filter-card-note {
+  background: #fffdf5;
+  border-color: #facc15;
+}
+
+.pc-filter-card-header h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.pc-filter-card-header p {
+  margin: 0.35rem 0 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.pc-filter-notes {
+  font-size: 0.85rem;
 }
 
 .chart-range-inline {
