@@ -59,6 +59,20 @@
     "その他": "#8b5cf6",
   };
 
+  const SPEC_YEAR_UNKNOWN = "不明";
+  const OFFICE_UNKNOWN_LABEL = "（未設定）";
+  const SPEC_YEAR_ORDER = [
+    "S46耐震設計指針より前",
+    "S46耐震設計指針",
+    "S55道示",
+    "H2道示",
+    "H8道示（復旧仕様含む）",
+    "H14道示",
+    "H24道示",
+    "H29道示",
+    SPEC_YEAR_UNKNOWN,
+  ];
+
 const PC_TENSION_SEGMENTS = [
   { key: "プレテン", label: "プレテン", color: "#0ea5e9" },
   { key: "ポステン", label: "ポステン", color: "#f97316" },
@@ -118,6 +132,8 @@ const PC_POST_SEGMENTS = [
     filters: {
       bridgeTypes: new Set(BRIDGE_TYPES),
       inspectionLevels: new Set(INSPECTION_LEVELS),
+      specYears: new Set(),
+      useSpecYearInference: false,
       lengthBinSize: 10,
       stockMode: "count",
       stockScope: "bridgeType",
@@ -125,6 +141,23 @@ const PC_POST_SEGMENTS = [
       excludeCulvert: false,
       pcTension: new Set(PC_TENSION_SEGMENTS.map((segment) => segment.key)),
       pcPost: new Set(PC_POST_SEGMENTS.map((segment) => segment.key)),
+      builtYearMin: null,
+      builtYearMax: null,
+      lengthMin: null,
+      lengthMax: null,
+      spanCountMin: null,
+      spanCountMax: null,
+      spanLengthMin: null,
+      spanLengthMax: null,
+      managementOffices: new Set(),
+    },
+    filterOptions: {
+      specYears: [],
+      managementOffices: [],
+      builtYear: { min: null, max: null },
+      length: { min: null, max: null },
+      spans: { min: null, max: null },
+      spanLength: { min: null, max: null },
     },
     charts: {
       stock: null,
@@ -165,11 +198,30 @@ const PC_POST_SEGMENTS = [
     bridgeTypeFilter: document.querySelector("[data-filter-bridge-types]"),
     inspectionFilter: document.querySelector("[data-filter-inspections]"),
     culvertFilter: document.querySelector("[data-filter-exclude-culvert]"),
+    specYearFilter: document.querySelector("[data-filter-spec-year]"),
+    specYearInferToggle: document.querySelector("[data-filter-spec-infer]"),
+    managementOfficeFilter: document.querySelector("[data-filter-office]"),
     pcFilterToggle: document.querySelector("[data-pc-filter-toggle]"),
     pcFilterBody: document.querySelector("[data-pc-filter-body]"),
     pcFilterReset: document.querySelector("[data-pc-filter-reset]"),
     pcTensionFilter: document.querySelector("[data-filter-pc-tension]"),
     pcPostFilter: document.querySelector("[data-filter-pc-post]"),
+    builtYearMinInput: document.querySelector("[data-filter-built-min]"),
+    builtYearMaxInput: document.querySelector("[data-filter-built-max]"),
+    lengthMinInput: document.querySelector("[data-filter-length-min]"),
+    lengthMaxInput: document.querySelector("[data-filter-length-max]"),
+    spanCountMinInput: document.querySelector("[data-filter-spans-min]"),
+    spanCountMaxInput: document.querySelector("[data-filter-spans-max]"),
+    spanLengthMinInput: document.querySelector("[data-filter-span-length-min]"),
+    spanLengthMaxInput: document.querySelector("[data-filter-span-length-max]"),
+    builtYearMinSlider: document.querySelector('[data-range-slider="builtYear"][data-slider-type="min"]'),
+    builtYearMaxSlider: document.querySelector('[data-range-slider="builtYear"][data-slider-type="max"]'),
+    lengthMinSlider: document.querySelector('[data-range-slider="bridgeLength"][data-slider-type="min"]'),
+    lengthMaxSlider: document.querySelector('[data-range-slider="bridgeLength"][data-slider-type="max"]'),
+    spanCountMinSlider: document.querySelector('[data-range-slider="spanCount"][data-slider-type="min"]'),
+    spanCountMaxSlider: document.querySelector('[data-range-slider="spanCount"][data-slider-type="max"]'),
+    spanLengthMinSlider: document.querySelector('[data-range-slider="spanLength"][data-slider-type="min"]'),
+    spanLengthMaxSlider: document.querySelector('[data-range-slider="spanLength"][data-slider-type="max"]'),
     lengthBinRange: document.querySelector("[data-length-bin-range]"),
     lengthBinLabel: document.querySelector("[data-length-bin-label]"),
     stockModeSelect: document.querySelector("[data-stock-mode]"),
@@ -193,10 +245,62 @@ const PC_POST_SEGMENTS = [
     filterDrawer: document.querySelector("[data-filter-drawer]"),
     filterDrawerClose: document.querySelector("[data-filter-drawer-close]"),
     filterDrawerBackdrop: document.querySelector("[data-filter-drawer-backdrop]"),
+    filterResetButton: document.querySelector("[data-filter-reset]"),
     filterInfoOpen: document.querySelector("[data-filter-info-open]"),
     filterInfoModal: document.querySelector("[data-filter-info-modal]"),
     filterInfoClose: document.querySelector("[data-filter-info-close]"),
     filterInfoBackdrop: document.querySelector("[data-filter-info-backdrop]"),
+  };
+
+  const RANGE_FILTER_CONFIGS = {
+    builtYear: {
+      key: "builtYear",
+      statsKey: "builtYear",
+      stateMinKey: "builtYearMin",
+      stateMaxKey: "builtYearMax",
+      minInput: elements.builtYearMinInput,
+      maxInput: elements.builtYearMaxInput,
+      minSlider: elements.builtYearMinSlider,
+      maxSlider: elements.builtYearMaxSlider,
+      step: 1,
+      decimals: 0,
+    },
+    bridgeLength: {
+      key: "bridgeLength",
+      statsKey: "length",
+      stateMinKey: "lengthMin",
+      stateMaxKey: "lengthMax",
+      minInput: elements.lengthMinInput,
+      maxInput: elements.lengthMaxInput,
+      minSlider: elements.lengthMinSlider,
+      maxSlider: elements.lengthMaxSlider,
+      step: 1,
+      decimals: 0,
+    },
+    spanCount: {
+      key: "spanCount",
+      statsKey: "spans",
+      stateMinKey: "spanCountMin",
+      stateMaxKey: "spanCountMax",
+      minInput: elements.spanCountMinInput,
+      maxInput: elements.spanCountMaxInput,
+      minSlider: elements.spanCountMinSlider,
+      maxSlider: elements.spanCountMaxSlider,
+      step: 1,
+      decimals: 0,
+    },
+    spanLength: {
+      key: "spanLength",
+      statsKey: "spanLength",
+      stateMinKey: "spanLengthMin",
+      stateMaxKey: "spanLengthMax",
+      minInput: elements.spanLengthMinInput,
+      maxInput: elements.spanLengthMaxInput,
+      minSlider: elements.spanLengthMinSlider,
+      maxSlider: elements.spanLengthMaxSlider,
+      step: 0.1,
+      decimals: 1,
+    },
   };
 
   let filterInfoLastFocus = null;
@@ -207,9 +311,11 @@ const PC_POST_SEGMENTS = [
     buildFilterChips();
     bindPcFilterControls();
     bindFilterDrawer();
+    bindGlobalFilterReset();
     bindRangeControl();
     bindSelectControls();
     bindCulvertFilter();
+    bindAdvancedFilters();
     bindMapControls();
     bindClusterControls();
     bindBaseLayerSelect();
@@ -218,6 +324,7 @@ const PC_POST_SEGMENTS = [
     initFilterInfoModal();
     initCharts();
     initMap();
+    rebuildDynamicFilters();
     renderUploadFeedback();
     renderLogs();
     if (!window.Papa) addLog("Papa Parse の読み込みに失敗しました。", "error");
@@ -381,6 +488,319 @@ const PC_POST_SEGMENTS = [
     });
   }
 
+  function syncBridgeTypeChips() {
+    const container = elements.bridgeTypeFilter;
+    if (!container) return;
+    container.querySelectorAll("button").forEach((chip) => {
+      const value = chip.dataset.value;
+      const isActive = state.filters.bridgeTypes.has(value);
+      chip.classList.toggle("is-active", isActive);
+      chip.setAttribute("aria-pressed", String(isActive));
+    });
+  }
+
+  function syncInspectionChips() {
+    const container = elements.inspectionFilter;
+    if (!container) return;
+    container.querySelectorAll("button").forEach((chip) => {
+      const value = chip.dataset.value;
+      const isActive = state.filters.inspectionLevels.has(value);
+      chip.classList.toggle("is-active", isActive);
+      chip.setAttribute("aria-pressed", String(isActive));
+    });
+  }
+
+  function rebuildDynamicFilters() {
+    const stats = collectFilterOptionStats();
+    state.filterOptions = stats;
+    syncSpecYearSelection(stats.specYears);
+    syncManagementOfficeSelection(stats.managementOffices);
+    renderSpecYearChips(stats.specYears);
+    renderManagementOfficeOptions(stats.managementOffices);
+    updateNumericPlaceholders(stats);
+  }
+
+  function resetAllFilters() {
+    state.filters.bridgeTypes = new Set(BRIDGE_TYPES);
+    state.filters.inspectionLevels = new Set(INSPECTION_LEVELS);
+    state.filters.excludeCulvert = false;
+    state.filters.useSpecYearInference = false;
+    state.filters.pcTension = new Set(PC_TENSION_SEGMENTS.map((segment) => segment.key));
+    state.filters.pcPost = new Set(PC_POST_SEGMENTS.map((segment) => segment.key));
+    state.filters.builtYearMin = null;
+    state.filters.builtYearMax = null;
+    state.filters.lengthMin = null;
+    state.filters.lengthMax = null;
+    state.filters.spanCountMin = null;
+    state.filters.spanCountMax = null;
+    state.filters.spanLengthMin = null;
+    state.filters.spanLengthMax = null;
+    const specOptions = state.filterOptions.specYears ?? [];
+    state.filters.specYears = specOptions.length ? new Set(specOptions) : new Set();
+    const officeOptions = state.filterOptions.managementOffices ?? [];
+    state.filters.managementOffices = officeOptions.length ? new Set(officeOptions) : new Set();
+
+    syncBridgeTypeChips();
+    syncInspectionChips();
+    syncSpecYearChips();
+    renderManagementOfficeOptions(state.filterOptions.managementOffices);
+    updatePcFilterUI();
+    updateNumericPlaceholders(state.filterOptions);
+    if (elements.culvertFilter) elements.culvertFilter.checked = false;
+    if (elements.specYearInferToggle) elements.specYearInferToggle.checked = false;
+    refreshAll();
+  }
+
+  function collectFilterOptionStats() {
+    const specYearSet = new Set();
+    const officeSet = new Set();
+    let builtMin = null;
+    let builtMax = null;
+    let lengthMin = null;
+    let lengthMax = null;
+    let spansMin = null;
+    let spansMax = null;
+    let spanLengthMin = null;
+    let spanLengthMax = null;
+    let hasUnknownSpec = false;
+    state.datasets.forEach((dataset) => {
+      dataset.records.forEach((record) => {
+        const builtYear = record.builtYear;
+        if (Number.isFinite(builtYear)) {
+          builtMin = builtMin === null ? builtYear : Math.min(builtMin, builtYear);
+          builtMax = builtMax === null ? builtYear : Math.max(builtMax, builtYear);
+        }
+        const bridgeLength = record.bridgeLengthM;
+        if (Number.isFinite(bridgeLength)) {
+          lengthMin = lengthMin === null ? bridgeLength : Math.min(lengthMin, bridgeLength);
+          lengthMax = lengthMax === null ? bridgeLength : Math.max(lengthMax, bridgeLength);
+        }
+        const spans = record.spans;
+        if (Number.isFinite(spans)) {
+          spansMin = spansMin === null ? spans : Math.min(spansMin, spans);
+          spansMax = spansMax === null ? spans : Math.max(spansMax, spans);
+        }
+        const spanLength = record.spanLengthM;
+        if (Number.isFinite(spanLength)) {
+          spanLengthMin = spanLengthMin === null ? spanLength : Math.min(spanLengthMin, spanLength);
+          spanLengthMax = spanLengthMax === null ? spanLength : Math.max(spanLengthMax, spanLength);
+        }
+        const actualSpec = record.specYearLabel;
+        if (actualSpec && actualSpec !== SPEC_YEAR_UNKNOWN) {
+          specYearSet.add(actualSpec);
+        } else {
+          hasUnknownSpec = true;
+        }
+        if (record.specYearInferred) {
+          specYearSet.add(record.specYearInferred);
+        }
+        officeSet.add(getManagementOfficeLabel(record));
+      });
+    });
+    if (hasUnknownSpec) {
+      specYearSet.add(SPEC_YEAR_UNKNOWN);
+    }
+    return {
+      specYears: sortSpecYearOptions(Array.from(specYearSet)),
+      managementOffices: Array.from(officeSet).sort((a, b) => a.localeCompare(b, "ja-JP")),
+      builtYear: { min: builtMin, max: builtMax },
+      length: { min: lengthMin, max: lengthMax },
+      spans: { min: spansMin, max: spansMax },
+      spanLength: { min: spanLengthMin, max: spanLengthMax },
+    };
+  }
+
+  function syncSpecYearSelection(options) {
+    const previous = state.filters.specYears;
+    const next = new Set();
+    if (!options.length) {
+      state.filters.specYears = new Set();
+      return;
+    }
+    options.forEach((value) => {
+      if (!previous.size || previous.has(value)) {
+        next.add(value);
+      }
+    });
+    if (!next.size) {
+      options.forEach((value) => next.add(value));
+    }
+    state.filters.specYears = next;
+  }
+
+  function syncManagementOfficeSelection(options) {
+    const previous = state.filters.managementOffices;
+    const next = new Set();
+    if (!options.length) {
+      state.filters.managementOffices = new Set();
+      return;
+    }
+    options.forEach((value) => {
+      if (!previous.size || previous.has(value)) {
+        next.add(value);
+      }
+    });
+    if (!next.size) {
+      options.forEach((value) => next.add(value));
+    }
+    state.filters.managementOffices = next;
+  }
+
+  function renderSpecYearChips(options) {
+    const container = elements.specYearFilter;
+    if (!container) return;
+    container.innerHTML = "";
+    if (!options.length) {
+      const empty = document.createElement("p");
+      empty.className = "filter-helper";
+      empty.textContent = "CSV を読み込むと候補が表示されます。";
+      container.appendChild(empty);
+      return;
+    }
+    options.forEach((value) => {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "chip";
+      chip.dataset.value = value;
+      chip.textContent = value;
+      const isActive = state.filters.specYears.has(value);
+      chip.classList.toggle("is-active", isActive);
+      chip.setAttribute("aria-pressed", String(isActive));
+      chip.addEventListener("click", () => handleSpecYearToggle(value, chip));
+      container.appendChild(chip);
+    });
+  }
+
+  function handleSpecYearToggle(value, chip) {
+    toggleSetSelection(state.filters.specYears, value);
+    refreshAll();
+    syncSpecYearChips();
+  }
+
+  function syncSpecYearChips() {
+    const container = elements.specYearFilter;
+    if (!container) return;
+    container.querySelectorAll("button").forEach((chip) => {
+      const value = chip.dataset.value;
+      const isActive = state.filters.specYears.has(value);
+      chip.classList.toggle("is-active", isActive);
+      chip.setAttribute("aria-pressed", String(isActive));
+    });
+  }
+
+  function renderManagementOfficeOptions(options) {
+    const select = elements.managementOfficeFilter;
+    if (!select) return;
+    select.innerHTML = "";
+    if (!options.length) {
+      select.disabled = true;
+      const placeholder = document.createElement("option");
+      placeholder.textContent = "CSV を読み込んでください";
+      placeholder.disabled = true;
+      placeholder.selected = true;
+      select.appendChild(placeholder);
+      return;
+    }
+    select.disabled = false;
+    options.forEach((value) => {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = value;
+      option.selected = state.filters.managementOffices.has(value);
+      select.appendChild(option);
+    });
+  }
+
+  function updateNumericPlaceholders(stats) {
+    Object.values(RANGE_FILTER_CONFIGS).forEach((config) => {
+      const rangeStats = stats[config.statsKey];
+      updateRangeInputPlaceholders(config, rangeStats);
+      syncRangeInputsFromState(config.key);
+      syncRangeSlidersFromState(config.key, rangeStats);
+    });
+  }
+
+  function updateRangeInputPlaceholders(config, range) {
+    const { minInput, maxInput, decimals = 0 } = config;
+    if (minInput) {
+      minInput.placeholder = Number.isFinite(range?.min) ? formatRangeValue(range.min, decimals) : "";
+      if (Number.isFinite(range?.min)) minInput.min = range.min;
+      else minInput.removeAttribute("min");
+      if (Number.isFinite(range?.max)) minInput.max = range.max;
+      else minInput.removeAttribute("max");
+    }
+    if (maxInput) {
+      maxInput.placeholder = Number.isFinite(range?.max) ? formatRangeValue(range.max, decimals) : "";
+      if (Number.isFinite(range?.min)) maxInput.min = range.min;
+      else maxInput.removeAttribute("min");
+      if (Number.isFinite(range?.max)) maxInput.max = range.max;
+      else maxInput.removeAttribute("max");
+    }
+  }
+
+  function setRangeState(key, min, max) {
+    const config = RANGE_FILTER_CONFIGS[key];
+    if (!config) return;
+    state.filters[config.stateMinKey] = Number.isFinite(min) ? min : null;
+    state.filters[config.stateMaxKey] = Number.isFinite(max) ? max : null;
+    refreshAll();
+  }
+
+  function syncRangeInputsFromState(key) {
+    const config = RANGE_FILTER_CONFIGS[key];
+    if (!config) return;
+    const decimals = config.decimals || 0;
+    const minValue = state.filters[config.stateMinKey];
+    const maxValue = state.filters[config.stateMaxKey];
+    if (config.minInput) {
+      config.minInput.value = Number.isFinite(minValue) ? formatRangeValue(minValue, decimals) : "";
+    }
+    if (config.maxInput) {
+      config.maxInput.value = Number.isFinite(maxValue) ? formatRangeValue(maxValue, decimals) : "";
+    }
+  }
+
+  function syncRangeSlidersFromState(key, statsRange) {
+    const config = RANGE_FILTER_CONFIGS[key];
+    if (!config?.minSlider || !config?.maxSlider) return;
+    const hasRange = Number.isFinite(statsRange?.min) && Number.isFinite(statsRange?.max);
+    const minBound = hasRange ? statsRange.min : 0;
+    const maxBound = hasRange ? statsRange.max : minBound;
+    const step = config.step || 1;
+    const decimals = config.decimals || 0;
+    config.minSlider.disabled = !hasRange;
+    config.maxSlider.disabled = !hasRange;
+    config.minSlider.min = hasRange ? minBound : 0;
+    config.minSlider.max = hasRange ? maxBound : 0;
+    config.maxSlider.min = hasRange ? minBound : 0;
+    config.maxSlider.max = hasRange ? maxBound : 0;
+    config.minSlider.step = step;
+    config.maxSlider.step = step;
+    const stateMin = state.filters[config.stateMinKey];
+    const stateMax = state.filters[config.stateMaxKey];
+    const fallbackMin = Number.isFinite(stateMin) ? stateMin : minBound;
+    const fallbackMax = Number.isFinite(stateMax) ? stateMax : maxBound;
+    config.minSlider.value = formatRangeValue(fallbackMin, decimals);
+    config.maxSlider.value = formatRangeValue(fallbackMax, decimals);
+  }
+
+  function formatRangeValue(value, decimals = 0) {
+    if (!Number.isFinite(value)) return "";
+    if (decimals <= 0) return String(Math.round(value));
+    return Number(value).toFixed(decimals);
+  }
+
+  function sortSpecYearOptions(values) {
+    return values.sort((a, b) => {
+      const indexA = SPEC_YEAR_ORDER.indexOf(a);
+      const indexB = SPEC_YEAR_ORDER.indexOf(b);
+      if (indexA === -1 && indexB === -1) return a.localeCompare(b, "ja-JP");
+      if (indexA === -1) return 1;
+      if (indexB === -1) return -1;
+      return indexA - indexB;
+    });
+  }
+
   function bindFilterDrawer() {
     const drawer = elements.filterDrawer;
     if (!drawer) return;
@@ -485,6 +905,12 @@ const PC_POST_SEGMENTS = [
 
     closeDrawer();
     handleBreakpointChange();
+  }
+
+  function bindGlobalFilterReset() {
+    elements.filterResetButton?.addEventListener("click", () => {
+      resetAllFilters();
+    });
   }
 
   function initFilterInfoModal() {
@@ -631,6 +1057,107 @@ const PC_POST_SEGMENTS = [
     });
   }
 
+  function bindAdvancedFilters() {
+    bindSpecYearInferenceToggle();
+    bindManagementOfficeFilter();
+    bindRangeInputs();
+    bindRangeSliders();
+    bindRangeClearButtons();
+  }
+
+  function bindSpecYearInferenceToggle() {
+    const checkbox = elements.specYearInferToggle;
+    if (!checkbox) return;
+    checkbox.checked = state.filters.useSpecYearInference;
+    checkbox.addEventListener("change", (event) => {
+      state.filters.useSpecYearInference = Boolean(event.currentTarget.checked);
+      refreshAll();
+    });
+  }
+
+  function bindManagementOfficeFilter() {
+    const select = elements.managementOfficeFilter;
+    if (!select) return;
+    select.addEventListener("change", () => {
+      const selected = new Set(Array.from(select.selectedOptions).map((option) => option.value));
+      state.filters.managementOffices = selected;
+      refreshAll();
+    });
+  }
+
+  function bindRangeInputs() {
+    Object.values(RANGE_FILTER_CONFIGS).forEach((config) => {
+      if (!config.minInput && !config.maxInput) return;
+      const handle = () => {
+        const decimals = config.decimals || 0;
+        let min = parseInputNumber(config.minInput);
+        let max = parseInputNumber(config.maxInput);
+        if (Number.isFinite(min) && Number.isFinite(max) && min > max) {
+          if (document.activeElement === config.minInput && config.maxInput) {
+            max = min;
+            config.maxInput.value = formatRangeValue(max, decimals);
+          } else if (document.activeElement === config.maxInput && config.minInput) {
+            min = max;
+            config.minInput.value = formatRangeValue(min, decimals);
+          } else {
+            const temp = min;
+            min = max;
+            max = temp;
+          }
+        }
+        setRangeState(config.key, min, max);
+        syncRangeSlidersFromState(config.key, state.filterOptions?.[config.statsKey]);
+      };
+      config.minInput?.addEventListener("change", handle);
+      config.maxInput?.addEventListener("change", handle);
+    });
+  }
+
+  function bindRangeSliders() {
+    Object.values(RANGE_FILTER_CONFIGS).forEach((config) => {
+      if (!config.minSlider || !config.maxSlider) return;
+      const handleSlider = (type) => {
+        let minValue = Number.parseFloat(config.minSlider.value);
+        let maxValue = Number.parseFloat(config.maxSlider.value);
+        if (!Number.isFinite(minValue) || !Number.isFinite(maxValue)) return;
+        if (minValue > maxValue) {
+          if (type === "min") {
+            maxValue = minValue;
+            config.maxSlider.value = formatRangeValue(maxValue, config.decimals);
+          } else {
+            minValue = maxValue;
+            config.minSlider.value = formatRangeValue(minValue, config.decimals);
+          }
+        }
+        setRangeState(config.key, minValue, maxValue);
+        syncRangeInputsFromState(config.key);
+      };
+      config.minSlider.addEventListener("input", () => handleSlider("min"));
+      config.maxSlider.addEventListener("input", () => handleSlider("max"));
+    });
+  }
+
+  function bindRangeClearButtons() {
+    document.querySelectorAll("[data-range-clear]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const key = button.dataset.rangeClear;
+        const config = RANGE_FILTER_CONFIGS[key];
+        if (!config) return;
+        setRangeState(key, null, null);
+        config.minInput && (config.minInput.value = "");
+        config.maxInput && (config.maxInput.value = "");
+        syncRangeInputsFromState(key);
+        syncRangeSlidersFromState(key, state.filterOptions?.[config.statsKey]);
+      });
+    });
+  }
+
+  function parseInputNumber(input) {
+    if (!input) return null;
+    const value = parseNumber(input.value);
+    return Number.isFinite(value) ? value : null;
+  }
+
   function bindDropzone() {
     const dropzone = elements.dropzone;
     const fileInput = elements.fileInput;
@@ -728,6 +1255,7 @@ const PC_POST_SEGMENTS = [
     });
     state.forceFitMap = true;
     state.lastUploadSummaries.push({ fileName: file.name, label: datasetLabel, rows: normalized.length });
+    rebuildDynamicFilters();
 
     addLog(`「${file.name}」を dataset「${datasetLabel}」として登録 (${normalized.length} 件)`, "info");
     if (results.errors?.length) {
@@ -748,7 +1276,7 @@ const PC_POST_SEGMENTS = [
     const facilityName = sanitizeText(values["施設名"]);
     const routeName = sanitizeText(values["路線名"]);
     const builtYear = parseNumber(values["架設年度_西暦"] ?? values["架設年度"]);
-    const bridgeLengthM = parseNumber(values["橋長(m)"]);
+    const bridgeLengthValue = parseNumber(values["橋長(m)"]);
     const spans = parseNumber(values["径間数"]);
     const materialRaw = sanitizeText(
       values["上部工（使用材料）"] ??
@@ -772,12 +1300,18 @@ const PC_POST_SEGMENTS = [
     );
     const pcMetadata = derivePcMetadata(superstructureType, superstructureForm, materialRaw);
     const isCulvert = detectCulvert(superstructureType, superstructureForm);
+    const specYearLabel = normalizeSpecYear(values["新設設計時の適用基準"]);
+    const inferredSpecYear = inferSpecYearFromYear(builtYear);
+    const spanLengthM =
+      Number.isFinite(bridgeLengthValue) && Number.isFinite(spans) && spans > 0
+        ? bridgeLengthValue / spans
+        : null;
 
     const isEmpty =
       !facilityName &&
       !routeName &&
       builtYear === null &&
-      bridgeLengthM === null &&
+      bridgeLengthValue === null &&
       !materialRaw &&
       !managementName &&
       inspectionYear === null &&
@@ -791,8 +1325,8 @@ const PC_POST_SEGMENTS = [
       facilityName: facilityName || "名称未設定",
       routeName: routeName || "路線名未設定",
       builtYear: builtYear ?? null,
-      bridgeLengthM: bridgeLengthM ?? 0,
-      spans: spans ?? null,
+      bridgeLengthM: Number.isFinite(bridgeLengthValue) ? bridgeLengthValue : null,
+      spans: Number.isFinite(spans) ? spans : null,
       materialRaw,
       managementName,
       managementOffice,
@@ -806,6 +1340,9 @@ const PC_POST_SEGMENTS = [
       isCulvert,
       pcTensionType: pcMetadata.tensionType,
       pcPostCategory: pcMetadata.postCategory,
+      specYearLabel: specYearLabel ?? null,
+      specYearInferred: inferredSpecYear,
+      spanLengthM,
     };
   }
 
@@ -999,6 +1536,7 @@ function resolvePcPostKey(value) {
     if (index === -1) return;
     const [removed] = state.datasets.splice(index, 1);
     addLog(`dataset「${removed?.label ?? datasetId}」を削除しました。`, "info");
+    rebuildDynamicFilters();
     refreshAll();
   }
 
@@ -1546,7 +2084,26 @@ function resolvePcPostKey(value) {
   function getFilteredRecords(options = {}) {
     const { skipCulvertFilter = false } = options;
     const activeDatasetIds = new Set(state.datasets.filter((dataset) => dataset.active).map((dataset) => dataset.id));
-    const { bridgeTypes, inspectionLevels, pcTension, pcPost } = state.filters;
+    const {
+      bridgeTypes,
+      inspectionLevels,
+      pcTension,
+      pcPost,
+      specYears,
+      useSpecYearInference,
+      builtYearMin,
+      builtYearMax,
+      lengthMin,
+      lengthMax,
+      spanCountMin,
+      spanCountMax,
+      spanLengthMin,
+      spanLengthMax,
+      managementOffices,
+    } = state.filters;
+    const specYearFilterActive = specYears.size > 0;
+    const officeFilterActive = managementOffices.size > 0;
+    const culvertFilterEnabled = !skipCulvertFilter && state.filters.excludeCulvert;
     const records = [];
     state.datasets.forEach((dataset) => {
       if (!activeDatasetIds.has(dataset.id)) return;
@@ -1561,7 +2118,14 @@ function resolvePcPostKey(value) {
           }
         }
         if (!inspectionLevels.has(record.inspectionLevel)) return;
-        if (!skipCulvertFilter && state.filters.excludeCulvert && record.isCulvert) return;
+        if (culvertFilterEnabled && record.isCulvert) return;
+        if (officeFilterActive && !managementOffices.has(getManagementOfficeLabel(record))) return;
+        const specYearValue = getRecordSpecYearValue(record, useSpecYearInference) || SPEC_YEAR_UNKNOWN;
+        if (specYearFilterActive && !specYears.has(specYearValue)) return;
+        if (!passesNumericRange(record.builtYear, builtYearMin, builtYearMax)) return;
+        if (!passesNumericRange(record.bridgeLengthM, lengthMin, lengthMax)) return;
+        if (!passesNumericRange(record.spans, spanCountMin, spanCountMax)) return;
+        if (!passesNumericRange(record.spanLengthM, spanLengthMin, spanLengthMax)) return;
         records.push(record);
       });
     });
@@ -1682,6 +2246,83 @@ function resolvePcPostKey(value) {
       4: "IV",
     };
     return normalized[text] || normalized[text.replace(/[^IV0-9]/g, "")] || "UNKNOWN";
+  }
+
+  function normalizeSpecYear(value) {
+    const text = sanitizeText(value);
+    if (!text) return null;
+    const normalized = text.normalize("NFKC").replace(/\s+/g, "");
+    if (!normalized) return null;
+    const upper = normalized.toUpperCase();
+    const hasAscii = (keyword) => upper.includes(keyword);
+    const hasKanji = (keyword) => normalized.includes(keyword);
+    const hasEither = (keyword) => hasAscii(keyword) || hasKanji(keyword);
+    const hasHeisei = (num) => hasKanji(`平成${num}`);
+    const hasShowa = (num) => hasKanji(`昭和${num}`);
+    if (hasKanji("不明") || hasKanji("不詳") || hasAscii("UNKNOWN") || hasAscii("N/A")) {
+      return SPEC_YEAR_UNKNOWN;
+    }
+    if (hasAscii("H29") || hasHeisei("29")) return "H29道示";
+    if (hasAscii("H24") || hasHeisei("24")) return "H24道示";
+    if (hasAscii("H14") || hasHeisei("14")) return "H14道示";
+    if (hasAscii("H8") || hasHeisei("8")) return "H8道示（復旧仕様含む）";
+    if (hasAscii("H2") || hasHeisei("2")) return "H2道示";
+    if (hasAscii("S55") || hasShowa("55")) return "S55道示";
+    const isS46 = hasAscii("S46") || hasShowa("46");
+    if (
+      isS46 &&
+      (hasKanji("より前") || hasKanji("より以前") || hasKanji("以前") || normalized.includes("ヨリマエ"))
+    ) {
+      return "S46耐震設計指針より前";
+    }
+    if (isS46 && (hasKanji("耐震設計指針") || hasAscii("TAISHIN"))) {
+      return "S46耐震設計指針";
+    }
+    if (hasEither("S46") && hasKanji("以前")) {
+      return "S46耐震設計指針より前";
+    }
+    return text.trim();
+  }
+
+  function inferSpecYearFromYear(year) {
+    if (!Number.isFinite(year)) return null;
+    if (year < 1971) return "S46耐震設計指針より前";
+    if (year < 1980) return "S46耐震設計指針";
+    if (year < 1990) return "S55道示";
+    if (year < 1996) return "H2道示";
+    if (year < 2002) return "H8道示（復旧仕様含む）";
+    if (year < 2012) return "H14道示";
+    if (year < 2017) return "H24道示";
+    return "H29道示";
+  }
+
+  function getRecordSpecYearValue(record, useInference) {
+    if (record.specYearLabel && record.specYearLabel !== SPEC_YEAR_UNKNOWN) {
+      return record.specYearLabel;
+    }
+    if (!useInference) {
+      return record.specYearLabel || SPEC_YEAR_UNKNOWN;
+    }
+    if (record.specYearLabel && record.specYearLabel === SPEC_YEAR_UNKNOWN) {
+      if (record.specYearInferred) return record.specYearInferred;
+      return SPEC_YEAR_UNKNOWN;
+    }
+    if (record.specYearInferred) {
+      return record.specYearInferred;
+    }
+    return record.specYearLabel || SPEC_YEAR_UNKNOWN;
+  }
+
+  function getManagementOfficeLabel(record) {
+    return record.managementOffice?.trim() ? record.managementOffice : OFFICE_UNKNOWN_LABEL;
+  }
+
+  function passesNumericRange(value, min, max) {
+    if (min === null && max === null) return true;
+    if (!Number.isFinite(value)) return false;
+    if (min !== null && value < min) return false;
+    if (max !== null && value > max) return false;
+    return true;
   }
 
   function formatDate(date) {

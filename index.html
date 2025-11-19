@@ -1937,6 +1937,7 @@
               <div>
                 <h2 id="filter-heading">データ＆フィルタ</h2>
               </div>
+              <button type="button" class="ghost-link" data-filter-reset>全てリセット</button>
             </div>
             <div class="filter-row">
               <div class="filter-section">
@@ -1955,6 +1956,92 @@
                 </label>
               </div>
             </div>
+            <details class="filter-advanced" data-advanced-filters>
+              <summary>詳細フィルタ（示方書・事務所・年次など）</summary>
+              <div class="filter-advanced-body">
+                <div class="filter-row">
+                  <div class="filter-section">
+                    <p class="filter-label">示方書年度</p>
+                    <div class="chip-group chip-group-wrap" role="group" aria-label="示方書フィルタ" data-filter-spec-year></div>
+                    <label class="checkbox-control filter-inline">
+                      <input type="checkbox" data-filter-spec-infer />
+                      <span>架設年度から推定（不明のみ）</span>
+                    </label>
+                    <p class="filter-helper">読み込んだ CSV の値から自動生成されます。</p>
+                  </div>
+                  <div class="filter-section">
+                    <p class="filter-label">道路管理者_管理事務所名</p>
+                    <select multiple size="6" data-filter-office class="filter-multiselect" aria-label="管理事務所フィルタ" disabled>
+                      <option disabled selected>CSV を読み込んでください</option>
+                    </select>
+                    <p class="filter-helper">Ctrl / ⌘ キーを押しながらクリックで複数選択できます。</p>
+                  </div>
+                </div>
+                <div class="range-grid">
+                  <div class="range-control" data-range-key="builtYear">
+                    <div class="range-control-header">
+                      <p class="filter-label-sm">架設年度</p>
+                      <button type="button" class="range-clear" data-range-clear="builtYear">全範囲</button>
+                    </div>
+                    <div class="range-inputs">
+                      <input type="number" inputmode="numeric" placeholder="最小" data-filter-built-min aria-label="架設年度 下限" />
+                      <span class="range-sep">〜</span>
+                      <input type="number" inputmode="numeric" placeholder="最大" data-filter-built-max aria-label="架設年度 上限" />
+                    </div>
+                    <div class="range-slider" data-range-slider-group="builtYear">
+                      <input type="range" data-range-slider="builtYear" data-slider-type="min" value="0" min="0" max="0" step="1" />
+                      <input type="range" data-range-slider="builtYear" data-slider-type="max" value="0" min="0" max="0" step="1" />
+                    </div>
+                  </div>
+                  <div class="range-control" data-range-key="bridgeLength">
+                    <div class="range-control-header">
+                      <p class="filter-label-sm">橋長 (m)</p>
+                      <button type="button" class="range-clear" data-range-clear="bridgeLength">全範囲</button>
+                    </div>
+                    <div class="range-inputs">
+                      <input type="number" inputmode="decimal" placeholder="最小" data-filter-length-min aria-label="橋長 下限" />
+                      <span class="range-sep">〜</span>
+                      <input type="number" inputmode="decimal" placeholder="最大" data-filter-length-max aria-label="橋長 上限" />
+                    </div>
+                    <div class="range-slider" data-range-slider-group="bridgeLength">
+                      <input type="range" data-range-slider="bridgeLength" data-slider-type="min" value="0" min="0" max="0" step="1" />
+                      <input type="range" data-range-slider="bridgeLength" data-slider-type="max" value="0" min="0" max="0" step="1" />
+                    </div>
+                  </div>
+                  <div class="range-control" data-range-key="spanCount">
+                    <div class="range-control-header">
+                      <p class="filter-label-sm">径間数</p>
+                      <button type="button" class="range-clear" data-range-clear="spanCount">全範囲</button>
+                    </div>
+                    <div class="range-inputs">
+                      <input type="number" inputmode="numeric" placeholder="最小" data-filter-spans-min aria-label="径間数 下限" />
+                      <span class="range-sep">〜</span>
+                      <input type="number" inputmode="numeric" placeholder="最大" data-filter-spans-max aria-label="径間数 上限" />
+                    </div>
+                    <div class="range-slider" data-range-slider-group="spanCount">
+                      <input type="range" data-range-slider="spanCount" data-slider-type="min" value="0" min="0" max="0" step="1" />
+                      <input type="range" data-range-slider="spanCount" data-slider-type="max" value="0" min="0" max="0" step="1" />
+                    </div>
+                  </div>
+                  <div class="range-control" data-range-key="spanLength">
+                    <div class="range-control-header">
+                      <p class="filter-label-sm">径間長 (m)</p>
+                      <button type="button" class="range-clear" data-range-clear="spanLength">全範囲</button>
+                    </div>
+                    <div class="range-inputs">
+                      <input type="number" inputmode="decimal" placeholder="最小" data-filter-span-length-min aria-label="径間長 下限" />
+                      <span class="range-sep">〜</span>
+                      <input type="number" inputmode="decimal" placeholder="最大" data-filter-span-length-max aria-label="径間長 上限" />
+                    </div>
+                    <div class="range-slider" data-range-slider-group="spanLength">
+                      <input type="range" data-range-slider="spanLength" data-slider-type="min" value="0" min="0" max="0" step="0.1" />
+                      <input type="range" data-range-slider="spanLength" data-slider-type="max" value="0" min="0" max="0" step="0.1" />
+                    </div>
+                    <p class="filter-helper">橋長 ÷ 径間数 から算出した値です。</p>
+                  </div>
+                </div>
+              </div>
+            </details>
             <div class="pc-filter-stack" aria-labelledby="pc-filter-heading" aria-describedby="pc-filter-note">
               <div class="pc-filter-header">
                 <div class="pc-filter-actions">
@@ -2096,6 +2183,49 @@
                 </dd>
                 <dt>挙動</dt>
                 <dd>「カルバートを除く」をオンにすると、該当レコードはグラフ・統計・地図・KPI すべてから除外されます。</dd>
+              </dl>
+            </section>
+            <section>
+              <h3>示方書年度</h3>
+              <p class="filter-info-summary"><code>新設設計時の適用基準</code> に記載された示方書の年度ごとに表示可否を切り替えます。</p>
+              <dl class="filter-info-table">
+                <dt>参照列</dt>
+                <dd><code>新設設計時の適用基準</code></dd>
+                <dt>推定チェックの挙動</dt>
+                <dd>
+                  <ol class="filter-info-steps">
+                    <li>列の値が空欄または「不明」のレコードに限り <code>架設年度_西暦</code> を参照。</li>
+                    <li>年次に応じて S46 耐震設計指針より前 → S46 耐震設計指針 → S55 道示 → H2 道示 → H8 道示（復旧仕様含む） → H14 道示 → H24 道示 → H29 道示 の順で分類。</li>
+                    <li>推定できない場合は「不明」として残ります。</li>
+                  </ol>
+                </dd>
+              </dl>
+            </section>
+            <section>
+              <h3>道路管理者_管理事務所名</h3>
+              <p class="filter-info-summary">読み込んだ CSV に出現する管理事務所名を候補として表示し、複数選択で絞り込みます。</p>
+              <dl class="filter-info-table">
+                <dt>参照列</dt>
+                <dd><code>道路管理者_管理事務所名</code></dd>
+                <dt>補足</dt>
+                <dd>空欄は「（未設定）」として扱います。dataset を追加・削除すると候補が自動で更新されます。</dd>
+              </dl>
+            </section>
+            <section>
+              <h3>数値レンジ（架設年度 / 橋長 / 径間数 / 径間長）</h3>
+              <p class="filter-info-summary">各列の上下限を設定し、レンジに入るレコードのみを対象にします。</p>
+              <dl class="filter-info-table">
+                <dt>参照列</dt>
+                <dd>
+                  <ul class="filter-info-list">
+                    <li>架設年度: <code>架設年度_西暦</code></li>
+                    <li>橋長: <code>橋長(m)</code></li>
+                    <li>径間数: <code>径間数</code></li>
+                    <li>径間長: <code>橋長(m)</code> ÷ <code>径間数</code> で算出。</li>
+                  </ul>
+                </dd>
+                <dt>注意</dt>
+                <dd>上下限を入力した列で値が欠損しているレコードは自動的に除外されます。</dd>
               </dl>
             </section>
             <section>
