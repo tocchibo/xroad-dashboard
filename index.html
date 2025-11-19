@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 
 
 
@@ -445,14 +445,14 @@
           data-filter-drawer-toggle
           aria-controls="filter-drawer-panel"
           aria-expanded="false"
-          aria-label="フィルタメニューを開閉"
+          aria-label="データ＆フィルタを開閉"
         >
           <span class="hamburger" aria-hidden="true">
             <span></span>
             <span></span>
             <span></span>
           </span>
-          <span class="drawer-toggle-text">フィルタ &amp; 表示設定</span>
+          <span class="drawer-toggle-text">データ＆フィルタ</span>
         </button>
 
 
@@ -469,375 +469,7 @@
 
 
 
-<section class="control-grid" aria-label="CSV 読み込みと指標">
 
-
-
-
-
-
-
-  <article class="panel card loader-panel ingest-panel" aria-label="CSV 読み込みと dataset">
-
-
-
-
-
-
-
-    <div class="ingest-grid">
-
-
-
-
-
-
-
-      <section class="ingest-column ingest-upload" aria-labelledby="csv-loader-heading">
-
-
-
-
-
-
-
-        <h3 class="ingest-subtitle" id="csv-loader-heading">CSV 読み込み</h3>
-
-
-
-
-
-
-
-        <div class="dropzone" data-dropzone tabindex="0">
-
-
-
-
-
-
-
-          <div class="dropzone-inner">
-
-
-
-
-
-
-
-            <p class="dropzone-title">ここに CSV をドラッグ &amp; ドロップ</p>
-
-
-
-
-
-
-
-          </div>
-
-
-
-
-
-
-
-        </div>
-
-
-
-
-
-
-
-        <div class="loader-controls">
-
-
-
-
-
-
-
-          <label class="file-input-button">
-
-
-
-
-
-
-
-            <input type="file" accept=".csv,text/csv" multiple data-file-input />
-
-
-
-
-
-
-
-            <span>CSV ファイルを選択</span>
-
-
-
-
-
-
-
-          </label>
-
-
-
-
-
-
-
-        </div>
-
-
-
-
-
-
-
-      </section>
-
-
-
-
-
-
-
-      <section class="ingest-column ingest-datasets" aria-labelledby="dataset-heading">
-
-
-
-
-
-
-
-        <h3 class="ingest-subtitle" id="dataset-heading">読み込み済み dataset</h3>
-
-
-
-
-
-
-
-        <p class="dataset-empty" data-dataset-empty>dataset はまだありません。CSV を取り込むとここに一覧が表示されます。</p>
-
-
-
-
-
-
-
-        <ul class="dataset-list" data-dataset-list aria-live="polite"></ul>
-
-
-
-
-
-
-
-      </section>
-
-
-
-
-
-
-
-    </div>
-
-
-
-
-
-
-
-  </article>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  <section class="panel card kpi-panel" aria-label="KPI ハイライト">
-
-
-
-
-
-
-
-    <div class="kpi-grid">
-
-
-
-
-
-
-
-      <div class="kpi-card">
-
-
-
-
-
-
-
-        <p class="kpi-label">アクティブ dataset</p>
-
-
-
-
-
-
-
-        <p class="kpi-value" data-kpi="datasets">0</p>
-
-
-
-
-
-
-
-      </div>
-
-
-
-
-
-
-
-      <div class="kpi-card">
-
-
-
-
-
-
-
-        <p class="kpi-label">橋梁総数</p>
-
-
-
-
-
-
-
-        <p class="kpi-value" data-kpi="bridges">0</p>
-
-
-
-
-
-
-
-      </div>
-
-
-
-
-
-
-
-      <div class="kpi-card">
-
-
-
-
-
-
-
-        <p class="kpi-label">総延長 (km)</p>
-
-
-
-
-
-
-
-        <p class="kpi-value" data-kpi="length">0.0</p>
-
-
-
-
-
-
-
-      </div>
-
-
-
-
-
-
-
-      <div class="kpi-card">
-
-
-
-
-
-
-
-        <p class="kpi-label">要注視（III/IV）</p>
-
-
-
-
-
-
-
-        <p class="kpi-value" data-kpi="flagged">0</p>
-
-
-
-
-
-
-
-      </div>
-
-
-
-
-
-
-
-    </div>
-
-
-
-
-
-
-
-    <p class="kpi-note" data-kpi-culvert-hint hidden>カルバートを除く</p>
-
-
-
-
-
-
-
-  </section>
-
-
-
-
-
-
-
-</section>
 
 
 
@@ -2237,14 +1869,14 @@
         class="filter-drawer"
         data-filter-drawer
         id="filter-drawer-panel"
-        aria-label="フィルタメニュー"
+        aria-label="データ＆フィルタ"
         aria-hidden="true"
       >
         <div class="filter-drawer-inner">
           <header class="filter-drawer-header">
             <div>
               <p class="eyebrow">操作メニュー</p>
-              <h2>フィルタ &amp; dataset</h2>
+              <h2>データ＆フィルタ</h2>
             </div>
             <button
               type="button"
@@ -2255,18 +1887,55 @@
               <span aria-hidden="true">&times;</span>
             </button>
           </header>
-          <section class="panel card drawer-card dataset-toggle-panel" aria-label="dataset 表示設定">
-            <div class="drawer-card-header">
-              <h3 class="drawer-card-title">dataset 表示</h3>
-              <p class="drawer-card-description">読み込んだ dataset の可視化 ON/OFF を一括で切り替えられます。</p>
+          
+          <section class="panel card drawer-card loader-panel ingest-panel" aria-label="CSV 読み込みと dataset">
+            <div class="ingest-grid">
+              <section class="ingest-column ingest-upload" aria-labelledby="csv-loader-heading">
+                <h3 class="ingest-subtitle" id="csv-loader-heading">CSV 読み込み</h3>
+                <div class="dropzone" data-dropzone tabindex="0">
+                  <div class="dropzone-inner">
+                    <p class="dropzone-title">ここに CSV をドラッグ &amp; ドロップ</p>
+                  </div>
+                </div>
+                <div class="loader-controls">
+                  <label class="file-input-button">
+                    <input type="file" accept=".csv,text/csv" multiple data-file-input />
+                    <span>CSV ファイルを選択</span>
+                  </label>
+                </div>
+              </section>
+              <section class="ingest-column ingest-datasets" aria-labelledby="dataset-heading">
+                <h3 class="ingest-subtitle" id="dataset-heading">読み込み済み dataset</h3>
+                <p class="dataset-empty" data-dataset-empty>dataset はまだありません。CSV を取り込むとここに一覧が表示されます。</p>
+                <ul class="dataset-list" data-dataset-list aria-live="polite"></ul>
+              </section>
             </div>
-            <p class="dataset-toggle-empty" data-dataset-toggle-empty>dataset はまだありません。</p>
-            <ul class="dataset-toggle-list" data-dataset-toggle-list aria-live="polite"></ul>
+          </section>
+          <section class="panel card drawer-card kpi-panel" aria-label="KPI ハイライト">
+            <div class="kpi-grid">
+              <div class="kpi-card">
+                <p class="kpi-label">アクティブ dataset</p>
+                <p class="kpi-value" data-kpi="datasets">0</p>
+              </div>
+              <div class="kpi-card">
+                <p class="kpi-label">橋梁総数</p>
+                <p class="kpi-value" data-kpi="bridges">0</p>
+              </div>
+              <div class="kpi-card">
+                <p class="kpi-label">総延長 (km)</p>
+                <p class="kpi-value" data-kpi="length">0.0</p>
+              </div>
+              <div class="kpi-card">
+                <p class="kpi-label">要注視！ III/IV</p>
+                <p class="kpi-value" data-kpi="flagged">0</p>
+              </div>
+            </div>
+            <p class="kpi-note" data-kpi-culvert-hint hidden>カルバートを除外中</p>
           </section>
           <section class="panel card filter-panel" aria-labelledby="filter-heading">
             <div class="panel-header panel-header-tight">
               <div>
-                <h2 id="filter-heading">フィルタ &amp; 表示設定</h2>
+                <h2 id="filter-heading">データ＆フィルタ</h2>
               </div>
             </div>
             <div class="filter-row">
@@ -2322,10 +1991,124 @@
                 </div>
               </div>
             </div>
+            <button type="button" class="filter-info-button" data-filter-info-open>フィルター条件の詳細</button>
           </section>
         </div>
       </aside>
       <div class="filter-drawer-backdrop" data-filter-drawer-backdrop hidden></div>
+      <div class="modal-backdrop" data-filter-info-backdrop hidden></div>
+      <section
+        class="modal filter-info-modal"
+        data-filter-info-modal
+        aria-hidden="true"
+        role="dialog"
+        aria-labelledby="filter-info-title"
+        hidden
+      >
+        <div class="modal-content">
+          <header class="modal-header">
+            <div>
+              <p class="eyebrow">フィルター説明</p>
+              <h2 id="filter-info-title">フィルター条件の詳細</h2>
+            </div>
+            <button type="button" class="modal-close" data-filter-info-close aria-label="詳細を閉じる">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </header>
+          <div class="modal-body">
+            <section>
+              <h3>橋種カテゴリ</h3>
+              <p class="filter-info-summary">CSV の橋種関連列から PC/RC/鋼/その他のカテゴリを決定し、橋種チップで表示・非表示を切り替えます。</p>
+              <dl class="filter-info-table">
+                <dt>参照列</dt>
+                <dd><code>上部工（使用材料）</code>（派生名を含む）&nbsp;/&nbsp;<code>上部構造形式</code>&nbsp;/&nbsp;<code>上部工（構造形式）</code></dd>
+                <dt>判定順序</dt>
+                <dd>
+                  <ol class="filter-info-steps">
+                    <li><code>上部工（使用材料）</code> の値にキーワードがあれば、そのカテゴリを採用。</li>
+                    <li>空欄の場合は <code>上部構造形式</code> → <code>上部工（構造形式）</code> の順に同じキーワードを検索。</li>
+                    <li>いずれにも一致しない場合は「その他」として扱う。</li>
+                  </ol>
+                </dd>
+                <dt>主要キーワード</dt>
+                <dd>
+                  <ul class="filter-info-list">
+                    <li>PC橋: “PC”“ＰＣ”“PRC”“ＰＲＣ”“プレストレスト”“ポストテンション” など。</li>
+                    <li>RC橋: “RC”“ＲＣ”“鉄筋”“鉄筋コンクリート” など。</li>
+                    <li>鋼橋: “鋼”“Ｓ造”“スチール”“トラス”“鋼桁”“鋼構造” など。</li>
+                  </ul>
+                </dd>
+              </dl>
+            </section>
+            <section>
+              <h3>点検判定区分</h3>
+              <p class="filter-info-summary">CSV の判定区分を正規化して I〜IV/不明 のカテゴリにまとめ、該当チップで表示対象を制御します。</p>
+              <dl class="filter-info-table">
+                <dt>参照列</dt>
+                <dd><code>点検記録_判定区分</code></dd>
+                <dt>処理</dt>
+                <dd>
+                  <ol class="filter-info-steps">
+                    <li>値をトリムし、全角ローマ数字・全角数字を半角に変換。</li>
+                    <li>I/II/III/IV/1/2/3/4 のいずれかに一致した場合のみ該当カテゴリへ分類。</li>
+                    <li>上記に該当しない値や空欄は “不明” として集計。</li>
+                  </ol>
+                </dd>
+              </dl>
+            </section>
+            <section>
+              <h3>PC橋詳細</h3>
+              <p class="filter-info-summary">PC 橋のみ、張力方式とポステン形式で追加フィルタを提供します。</p>
+              <dl class="filter-info-table">
+                <dt>参照列</dt>
+                <dd><code>上部構造形式</code>&nbsp;/&nbsp;<code>上部工（構造形式）</code>&nbsp;/&nbsp;<code>上部工（使用材料）</code></dd>
+                <dt>張力方式（プレテン / ポステン / 不明）</dt>
+                <dd>
+                  <ul class="filter-info-list">
+                    <li>“ポステン”“ポストテンション” などを含む → <code>ポステン</code></li>
+                    <li>“プレテン”“プリテン” などを含む → <code>プレテン</code></li>
+                    <li>上記以外 → <code>不明</code></li>
+                  </ul>
+                </dd>
+                <dt>ポステン形式（中空床版 / T桁 / 箱桁 / その他）</dt>
+                <dd>
+                  <ul class="filter-info-list">
+                    <li>張力方式が <code>ポステン</code> の場合のみ判定。</li>
+                    <li>“中空床版” → 中空床版 ／ “T桁” → T桁 ／ “箱桁” → 箱桁 ／ それ以外 → その他。</li>
+                  </ul>
+                </dd>
+                <dt>注意</dt>
+                <dd>「PC橋」カテゴリをオフにすると、張力方式・ポステン形式のチップは自動的に無効になります。</dd>
+              </dl>
+            </section>
+            <section>
+              <h3>カルバート除外</h3>
+              <p class="filter-info-summary">カルバート扱いのレコードを一括で除外できます。</p>
+              <dl class="filter-info-table">
+                <dt>参照列</dt>
+                <dd><code>溝橋(ｶﾙﾊﾞｰﾄ)</code>&nbsp;/&nbsp;<code>上部構造形式</code>&nbsp;/&nbsp;<code>上部工（構造形式）</code></dd>
+                <dt>判定ルール</dt>
+                <dd>
+                  <ol class="filter-info-steps">
+                    <li><code>溝橋(ｶﾙﾊﾞｰﾄ)</code> 列が “○” または “●” → カルバート。</li>
+                    <li>上記以外で形式名に “カルバート”“溝橋”“BOXカルバート” 等を含む場合もカルバート扱い。</li>
+                  </ol>
+                </dd>
+                <dt>挙動</dt>
+                <dd>「カルバートを除く」をオンにすると、該当レコードはグラフ・統計・地図・KPI すべてから除外されます。</dd>
+              </dl>
+            </section>
+            <section>
+              <h3>dataset 表示</h3>
+              <p class="filter-info-summary">読み込んだ CSV（=dataset）単位で表示を切り替えます。</p>
+              <dl class="filter-info-table">
+                <dt>操作内容</dt>
+                <dd>dataset カードのスイッチで ON/OFF を切り替え。OFF にした dataset のレコードは集計・地図・フィルタ・カルバート判定など全ての処理から除外されます。</dd>
+              </dl>
+            </section>
+          </div>
+        </div>
+      </section>
 
 
 
@@ -2382,6 +2165,7 @@
 
 
 </html>
+
 
 
 

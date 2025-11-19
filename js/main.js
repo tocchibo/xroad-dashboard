@@ -32,8 +32,8 @@
   const BRIDGE_TYPES = ["PC橋", "RC橋", "鋼橋", "その他"];
   const BRIDGE_TYPE_RULES = [
     { type: "PC橋", keywords: ["PC", "ＰＣ", "PRC", "ＰＲＣ", "プレストレスト", "ポストテンション"] },
-    { type: "RC橋", keywords: ["RC", "ＲＣ", "鉄筋", "REINFORCED", "ＲＥＩＮＦＯＲＣＥＤ"] },
-    { type: "鋼橋", keywords: ["鋼", "Ｓ造", "STEEL", "スチール", "トラス", "鋼桁"] },
+    { type: "RC橋", keywords: ["RC", "ＲＣ", "鉄筋"] },
+    { type: "鋼橋", keywords: ["鋼", "Ｓ造", "スチール", "トラス", "鋼桁"] },
   ];
 
   const INSPECTION_LEVELS = ["I", "II", "III", "IV", "UNKNOWN"];
@@ -59,18 +59,18 @@
     "その他": "#8b5cf6",
   };
 
-  const PC_TENSION_SEGMENTS = [
-    { key: "pretension", label: "プレテン", color: "#0ea5e9" },
-    { key: "posttension", label: "ポステン", color: "#f97316" },
-    { key: "other", label: "不明", color: "#94a3b8" },
-  ];
+const PC_TENSION_SEGMENTS = [
+  { key: "プレテン", label: "プレテン", color: "#0ea5e9" },
+  { key: "ポステン", label: "ポステン", color: "#f97316" },
+  { key: "不明", label: "不明", color: "#94a3b8" },
+];
 
-  const PC_POST_SEGMENTS = [
-    { key: "hollow", label: "ポステン中空床版" },
-    { key: "tGirder", label: "ポステンT桁" },
-    { key: "box", label: "ポステン箱桁" },
-    { key: "other", label: "その他" },
-  ];
+const PC_POST_SEGMENTS = [
+  { key: "中空床版", label: "ポステン中空床版" },
+  { key: "T桁", label: "ポステンT桁" },
+  { key: "箱桁", label: "ポステン箱桁" },
+  { key: "その他", label: "その他" },
+];
 
   const PC_POST_COLORS = ["#0ea5e9", "#f97316", "#10b981", "#94a3b8"];
   const PC_TENSION_KEYS = new Set(PC_TENSION_SEGMENTS.map((segment) => segment.key));
@@ -193,7 +193,13 @@
     filterDrawer: document.querySelector("[data-filter-drawer]"),
     filterDrawerClose: document.querySelector("[data-filter-drawer-close]"),
     filterDrawerBackdrop: document.querySelector("[data-filter-drawer-backdrop]"),
+    filterInfoOpen: document.querySelector("[data-filter-info-open]"),
+    filterInfoModal: document.querySelector("[data-filter-info-modal]"),
+    filterInfoClose: document.querySelector("[data-filter-info-close]"),
+    filterInfoBackdrop: document.querySelector("[data-filter-info-backdrop]"),
   };
+
+  let filterInfoLastFocus = null;
 
   init();
 
@@ -209,6 +215,7 @@
     bindBaseLayerSelect();
     bindDropzone();
     bindLogClear();
+    initFilterInfoModal();
     initCharts();
     initMap();
     renderUploadFeedback();
@@ -357,7 +364,7 @@
 
   function updatePcFilterUI() {
     const pcActive = state.filters.bridgeTypes.has("PC橋");
-    const postEnabled = pcActive && state.filters.pcTension.has("posttension");
+    const postEnabled = pcActive && state.filters.pcTension.has("ポステン");
     syncPcChips(elements.pcTensionFilter, state.filters.pcTension, pcActive);
     syncPcChips(elements.pcPostFilter, state.filters.pcPost, postEnabled);
   }
@@ -478,6 +485,55 @@
 
     closeDrawer();
     handleBreakpointChange();
+  }
+
+  function initFilterInfoModal() {
+    const openButton = elements.filterInfoOpen;
+    const closeButton = elements.filterInfoClose;
+    const backdrop = elements.filterInfoBackdrop;
+    openButton?.addEventListener("click", openFilterInfoModal);
+    closeButton?.addEventListener("click", closeFilterInfoModal);
+    backdrop?.addEventListener("click", closeFilterInfoModal);
+  }
+
+  function openFilterInfoModal() {
+    const modal = elements.filterInfoModal;
+    const backdrop = elements.filterInfoBackdrop;
+    if (!modal || !backdrop) return;
+    filterInfoLastFocus = document.activeElement;
+    modal.hidden = false;
+    backdrop.hidden = false;
+    modal.classList.add("is-active");
+    backdrop.classList.add("is-active");
+    modal.setAttribute("aria-hidden", "false");
+    elements.filterInfoClose?.focus();
+    document.addEventListener("keydown", handleFilterInfoKeydown);
+  }
+
+  function closeFilterInfoModal() {
+    const modal = elements.filterInfoModal;
+    const backdrop = elements.filterInfoBackdrop;
+    if (!modal || !backdrop) return;
+    modal.classList.remove("is-active");
+    backdrop.classList.remove("is-active");
+    modal.setAttribute("aria-hidden", "true");
+    modal.hidden = true;
+    backdrop.hidden = true;
+    document.removeEventListener("keydown", handleFilterInfoKeydown);
+    if (filterInfoLastFocus && typeof filterInfoLastFocus.focus === "function") {
+      try {
+        filterInfoLastFocus.focus();
+      } catch (_) {
+        // ignore focus errors
+      }
+    }
+  }
+
+  function handleFilterInfoKeydown(event) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeFilterInfoModal();
+    }
   }
 
 
@@ -744,7 +800,7 @@
       lng: Number.isFinite(lng) ? lng : null,
       inspectionYear: inspectionYear ?? null,
       inspectionLevel,
-      bridgeType: deriveBridgeType(materialRaw),
+      bridgeType: deriveBridgeType(materialRaw, superstructureType, superstructureForm),
       superstructureType,
       superstructureForm,
       isCulvert,
@@ -753,12 +809,16 @@
     };
   }
 
-  function deriveBridgeType(material) {
-    if (!material) return "その他";
-    const normalized = material.toUpperCase();
-    for (const rule of BRIDGE_TYPE_RULES) {
-      if (rule.keywords.some((keyword) => normalized.includes(keyword))) {
-        return rule.type;
+  function deriveBridgeType(material, superstructureType, superstructureForm) {
+    const sources = [material, superstructureType, superstructureForm].filter((value) => Boolean(value && value.trim()));
+    if (!sources.length) return "その他";
+    for (const source of sources) {
+      const normalized = normalizeForMatch(source);
+      if (!normalized) continue;
+      for (const rule of BRIDGE_TYPE_RULES) {
+        if (rule.keywords.some((keyword) => normalized.includes(normalizeForMatch(keyword)))) {
+          return rule.type;
+        }
       }
     }
     return "その他";
@@ -772,52 +832,44 @@
     const normalized = normalizeForMatch(sources.join(" "));
     let tensionType = null;
     if (
-      includesAnyKeyword(normalized, [
-        "ポステン",
-        "ﾎﾟｽﾃﾝ",
-        "ポストテン",
-        "ポストテンション",
-        "POSTTENSION",
-        "POST-TENSION",
-        "POST TENSION",
-      ])
+      includesAnyKeyword(normalized, ["ポステン", "ﾎﾟｽﾃﾝ", "ポストテン", "ポストテンション"])
     ) {
-      tensionType = "posttension";
+      tensionType = "ポステン";
     } else if (
-      includesAnyKeyword(normalized, ["プレテン", "ﾌﾟﾚﾃﾝ", "プリテン", "PRETENSION", "PRE-TENSION", "PRE TENSION"])
+      includesAnyKeyword(normalized, ["プレテン", "ﾌﾟﾚﾃﾝ", "プリテン"])
     ) {
-      tensionType = "pretension";
+      tensionType = "プレテン";
     }
 
     let postCategory = null;
-    if (tensionType === "posttension") {
+  if (tensionType === "ポステン") {
       const detailSource = normalizeForMatch(superstructureType?.split("_")[1] || superstructureType || "");
-      if (detailSource.includes("中空床版")) postCategory = "hollow";
-      else if (detailSource.includes("T桁")) postCategory = "tGirder";
-      else if (detailSource.includes("箱桁")) postCategory = "box";
+      if (detailSource.includes("中空床版")) postCategory = "中空床版";
+      else if (detailSource.includes("T桁")) postCategory = "T桁";
+      else if (detailSource.includes("箱桁")) postCategory = "箱桁";
       else if (detailSource) {
-        postCategory = "other";
+        postCategory = "その他";
       }
     }
     return { tensionType, postCategory };
   }
 
-  function resolvePcTensionKey(value) {
-    if (!value || !PC_TENSION_KEYS.has(value)) return "other";
-    return value;
-  }
+function resolvePcTensionKey(value) {
+  if (!value || !PC_TENSION_KEYS.has(value)) return "不明";
+  return value;
+}
 
-  function resolvePcPostKey(value) {
-    if (!value || !PC_POST_KEYS.has(value)) return "other";
-    return value;
-  }
+function resolvePcPostKey(value) {
+  if (!value || !PC_POST_KEYS.has(value)) return "その他";
+  return value;
+}
 
   function detectCulvert(superstructureType, superstructureForm) {
     const combined = [superstructureType, superstructureForm].filter(Boolean).join(" ");
     if (!combined) return false;
     const normalized = normalizeForMatch(combined);
-    return includesAnyKeyword(normalized, ["カルバート", "溝橋", "CULVERT"]);
-  }
+  return includesAnyKeyword(normalized, ["カルバート", "溝橋"]);
+}
 
   function deriveDatasetLabel(file, records) {
     const withManagement = records.find((record) => record.managementName);
@@ -869,44 +921,8 @@
         });
       }
     }
-    renderDatasetToggles();
   }
 
-  function renderDatasetToggles() {
-    const list = elements.datasetToggleList;
-    if (!list) return;
-    const empty = elements.datasetToggleEmpty;
-    const hasDatasets = state.datasets.length > 0;
-    list.innerHTML = "";
-    if (empty) {
-      empty.hidden = hasDatasets;
-    }
-    if (!hasDatasets) return;
-    state.datasets.forEach((dataset) => {
-      const item = document.createElement("li");
-      item.className = "dataset-toggle-item";
-      const name = document.createElement("p");
-      name.className = "dataset-toggle-name";
-      name.textContent = dataset.label;
-      const toggle = document.createElement("label");
-      toggle.className = "switch dataset-toggle-switch";
-      const checkbox = document.createElement("input");
-      checkbox.type = "checkbox";
-      checkbox.checked = dataset.active;
-      checkbox.addEventListener("change", () => {
-        dataset.active = checkbox.checked;
-        refreshAll();
-      });
-      const slider = document.createElement("span");
-      slider.className = "switch-slider";
-      const srOnly = document.createElement("span");
-      srOnly.className = "sr-only";
-      srOnly.textContent = `${dataset.label} を表示する`;
-      toggle.append(checkbox, slider, srOnly);
-      item.append(name, toggle);
-      list.appendChild(item);
-    });
-  }
 
   function createDatasetCard(dataset) {
     const item = document.createElement("li");
@@ -1315,16 +1331,16 @@
     if (!chart) return;
     const records = getFilteredRecords().filter((record) => record.bridgeType === "PC橋");
     const counts = {
-      pretension: 0,
-      posttension: 0,
-      other: 0,
+      プレテン: 0,
+      ポステン: 0,
+      不明: 0,
     };
     records.forEach((record) => {
       const key = record.pcTensionType;
       if (key && counts[key] !== undefined) {
         counts[key] += 1;
       } else {
-        counts.other += 1;
+        counts.不明 += 1;
       }
     });
     chart.data.labels = PC_TENSION_SEGMENTS.map((segment) => segment.label);
@@ -1336,11 +1352,14 @@
     const chart = state.charts.pcPost;
     if (!chart) return;
     const records = getFilteredRecords().filter(
-      (record) => record.bridgeType === "PC橋" && record.pcTensionType === "posttension"
+      (record) => record.bridgeType === "PC橋" && record.pcTensionType === "ポステン"
     );
     const counts = Object.fromEntries(PC_POST_SEGMENTS.map((segment) => [segment.key, 0]));
     records.forEach((record) => {
-      const key = record.pcPostCategory && counts[record.pcPostCategory] !== undefined ? record.pcPostCategory : "other";
+      const key =
+        record.pcPostCategory && counts[record.pcPostCategory] !== undefined
+          ? record.pcPostCategory
+          : "その他";
       counts[key] += 1;
     });
     chart.data.labels = PC_POST_SEGMENTS.map((segment) => segment.label);
@@ -1536,7 +1555,7 @@
         if (record.bridgeType === "PC橋") {
           const tensionKey = resolvePcTensionKey(record.pcTensionType);
           if (!pcTension.has(tensionKey)) return;
-          if (tensionKey === "posttension") {
+          if (tensionKey === "ポステン") {
             const postKey = resolvePcPostKey(record.pcPostCategory);
             if (!pcPost.has(postKey)) return;
           }
