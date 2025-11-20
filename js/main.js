@@ -511,10 +511,14 @@ const PC_POST_SEGMENTS = [
   }
 
   function rebuildDynamicFilters() {
+    const prevSpecOptions = state.filterOptions?.specYears ?? [];
+    const prevOfficeOptions = state.filterOptions?.managementOffices ?? [];
+    const prevSpecSelection = new Set(state.filters.specYears);
+    const prevOfficeSelection = new Set(state.filters.managementOffices);
     const stats = collectFilterOptionStats();
     state.filterOptions = stats;
-    syncSpecYearSelection(stats.specYears);
-    syncManagementOfficeSelection(stats.managementOffices);
+    syncSpecYearSelection(stats.specYears, prevSpecOptions, prevSpecSelection);
+    syncManagementOfficeSelection(stats.managementOffices, prevOfficeOptions, prevOfficeSelection);
     renderSpecYearChips(stats.specYears);
     renderManagementOfficeOptions(stats.managementOffices);
     updateNumericPlaceholders(stats);
@@ -610,15 +614,21 @@ const PC_POST_SEGMENTS = [
     };
   }
 
-  function syncSpecYearSelection(options) {
-    const previous = state.filters.specYears;
-    const next = new Set();
+  function syncSpecYearSelection(options, previousOptions = [], previousSelection = state.filters.specYears) {
+    const prevOptionsCount = Array.isArray(previousOptions) ? previousOptions.length : 0;
+    const prevSelectionSet = previousSelection instanceof Set ? previousSelection : new Set();
+    const treatAsAllSelected = prevSelectionSet.size === 0 || prevSelectionSet.size === prevOptionsCount;
     if (!options.length) {
       state.filters.specYears = new Set();
       return;
     }
+    if (treatAsAllSelected) {
+      state.filters.specYears = new Set(options);
+      return;
+    }
+    const next = new Set();
     options.forEach((value) => {
-      if (!previous.size || previous.has(value)) {
+      if (prevSelectionSet.has(value)) {
         next.add(value);
       }
     });
@@ -628,15 +638,25 @@ const PC_POST_SEGMENTS = [
     state.filters.specYears = next;
   }
 
-  function syncManagementOfficeSelection(options) {
-    const previous = state.filters.managementOffices;
-    const next = new Set();
+  function syncManagementOfficeSelection(
+    options,
+    previousOptions = [],
+    previousSelection = state.filters.managementOffices
+  ) {
+    const prevOptionsCount = Array.isArray(previousOptions) ? previousOptions.length : 0;
+    const prevSelectionSet = previousSelection instanceof Set ? previousSelection : new Set();
+    const treatAsAllSelected = prevSelectionSet.size === 0 || prevSelectionSet.size === prevOptionsCount;
     if (!options.length) {
       state.filters.managementOffices = new Set();
       return;
     }
+    if (treatAsAllSelected) {
+      state.filters.managementOffices = new Set(options);
+      return;
+    }
+    const next = new Set();
     options.forEach((value) => {
-      if (!previous.size || previous.has(value)) {
+      if (prevSelectionSet.has(value)) {
         next.add(value);
       }
     });
