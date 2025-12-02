@@ -1948,6 +1948,10 @@
                 <p class="filter-label">点検判定区分</p>
                 <div class="chip-group" role="group" aria-label="点検判定フィルタ" data-filter-inspections></div>
               </div>
+              <div class="filter-section">
+                <p class="filter-label">跨線橋 / 跨道橋</p>
+                <div class="chip-group" role="group" aria-label="跨線橋・跨道橋フィルタ" data-filter-crossing></div>
+              </div>
               <div class="filter-section filter-section-toggle">
                 <p class="filter-label">表示設定</p>
                 <label class="checkbox-control">
@@ -2183,6 +2187,22 @@
                 </dd>
                 <dt>挙動</dt>
                 <dd>「カルバートを除く」をオンにすると、該当レコードはグラフ・統計・地図・KPI すべてから除外されます。</dd>
+              </dl>
+            </section>
+            <section>
+              <h3>跨線橋 / 跨道橋</h3>
+              <p class="filter-info-summary">道路橋下状況から跨線橋・跨道橋を判定し、該当チップで表示対象を切り替えます。</p>
+              <dl class="filter-info-table">
+                <dt>参照列</dt>
+                <dd><code>道路橋下状況_鉄道</code>&nbsp;/&nbsp;<code>道路橋下状況_道路_道路管理者</code></dd>
+                <dt>判定ルール</dt>
+                <dd>
+                  <ul class="filter-info-list">
+                    <li>跨線橋: <code>道路橋下状況_鉄道</code> が「その他鉄道」または「新幹線」</li>
+                    <li>跨道橋: 跨線橋に該当しないもののうち、<code>道路橋下状況_道路_道路管理者</code> が「その他」「高速道路会社」「国」「市区町村」「都道府県」「政令市」</li>
+                    <li>その他: 上記以外・空欄</li>
+                  </ul>
+                </dd>
               </dl>
             </section>
             <section>
