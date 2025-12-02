@@ -1319,7 +1319,8 @@ const PC_POST_SEGMENTS = [
       values["上部工（構造形式）"] ?? values["上部工_構造形式"] ?? values["上部工構造形式"]
     );
     const pcMetadata = derivePcMetadata(superstructureType, superstructureForm, materialRaw);
-    const isCulvert = detectCulvert(superstructureType, superstructureForm);
+    const culvertFlag = sanitizeText(values["溝橋(ｶﾙﾊﾞｰﾄ)"]);
+    const isCulvert = detectCulvert(superstructureType, superstructureForm, culvertFlag);
     const specYearLabel = normalizeSpecYear(values["新設設計時の適用基準"]);
     const inferredSpecYear = inferSpecYearFromYear(builtYear);
     const spanLengthM =
@@ -1399,8 +1400,14 @@ const PC_POST_SEGMENTS = [
     }
 
     let postCategory = null;
-  if (tensionType === "ポステン") {
-      const detailSource = normalizeForMatch(superstructureType?.split("_")[1] || superstructureType || "");
+    if (tensionType === "ポステン") {
+      const detailParts = [];
+      if (superstructureType) {
+        const baseType = superstructureType.includes("_") ? superstructureType.split("_")[1] : superstructureType;
+        if (baseType) detailParts.push(baseType);
+      }
+      if (superstructureForm) detailParts.push(superstructureForm);
+      const detailSource = normalizeForMatch(detailParts.join(" "));
       if (detailSource.includes("中空床版")) postCategory = "中空床版";
       else if (detailSource.includes("T桁")) postCategory = "T桁";
       else if (detailSource.includes("箱桁")) postCategory = "箱桁";
@@ -1421,12 +1428,15 @@ function resolvePcPostKey(value) {
   return value;
 }
 
-  function detectCulvert(superstructureType, superstructureForm) {
+  function detectCulvert(superstructureType, superstructureForm, culvertFlag) {
+    const flagNormalized = normalizeForMatch(culvertFlag || "");
+    if (/[○●◯〇]/.test(culvertFlag)) return true;
+    if (flagNormalized.includes("YES") || flagNormalized.includes("TRUE")) return true;
     const combined = [superstructureType, superstructureForm].filter(Boolean).join(" ");
     if (!combined) return false;
     const normalized = normalizeForMatch(combined);
-  return includesAnyKeyword(normalized, ["カルバート", "溝橋"]);
-}
+    return includesAnyKeyword(normalized, ["カルバート", "溝橋", "BOXカルバート"]);
+  }
 
   function deriveDatasetLabel(file, records) {
     const withManagement = records.find((record) => record.managementName);
