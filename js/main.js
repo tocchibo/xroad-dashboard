@@ -59,6 +59,7 @@
     "その他": "#8b5cf6",
   };
 
+  const IMPORTANCE_LEVELS = ["Ａ種の橋", "Ｂ種の橋", "記載なし"];
   const CROSSING_TYPES = ["跨線橋", "跨道橋", "その他"];
   const CROSSING_RAIL_KEYWORDS = ["その他鉄道", "新幹線"];
   const CROSSING_ROAD_MANAGERS = ["その他", "高速道路会社", "国", "市区町村", "都道府県", "政令市"];
@@ -155,6 +156,7 @@ const PC_POST_SEGMENTS = [
       spanLengthMax: null,
       managementOffices: new Set(),
       crossingTypes: new Set(CROSSING_TYPES),
+      importanceLevels: new Set(IMPORTANCE_LEVELS),
     },
     filterOptions: {
       specYears: [],
@@ -203,6 +205,7 @@ const PC_POST_SEGMENTS = [
     bridgeTypeFilter: document.querySelector("[data-filter-bridge-types]"),
     inspectionFilter: document.querySelector("[data-filter-inspections]"),
     crossingFilter: document.querySelector("[data-filter-crossing]"),
+    importanceFilter: document.querySelector("[data-filter-importance]"),
     culvertFilter: document.querySelector("[data-filter-exclude-culvert]"),
     specYearFilter: document.querySelector("[data-filter-spec-year]"),
     specYearInferToggle: document.querySelector("[data-filter-spec-infer]"),
@@ -384,6 +387,18 @@ const PC_POST_SEGMENTS = [
         elements.crossingFilter.appendChild(chip);
       });
     }
+    if (elements.importanceFilter) {
+      IMPORTANCE_LEVELS.forEach((level) => {
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "chip is-active";
+        chip.dataset.value = level;
+        chip.textContent = level;
+        chip.setAttribute("aria-pressed", "true");
+        chip.addEventListener("click", () => toggleFilter(state.filters.importanceLevels, level, chip));
+        elements.importanceFilter.appendChild(chip);
+      });
+    }
     buildPcFilterChips();
     updatePcFilterUI();
   }
@@ -539,6 +554,17 @@ const PC_POST_SEGMENTS = [
     });
   }
 
+  function syncImportanceChips() {
+    const container = elements.importanceFilter;
+    if (!container) return;
+    container.querySelectorAll("button").forEach((chip) => {
+      const value = chip.dataset.value;
+      const isActive = state.filters.importanceLevels.has(value);
+      chip.classList.toggle("is-active", isActive);
+      chip.setAttribute("aria-pressed", String(isActive));
+    });
+  }
+
   function rebuildDynamicFilters() {
     const prevSpecOptions = state.filterOptions?.specYears ?? [];
     const prevOfficeOptions = state.filterOptions?.managementOffices ?? [];
@@ -569,6 +595,7 @@ const PC_POST_SEGMENTS = [
     state.filters.spanLengthMin = null;
     state.filters.spanLengthMax = null;
     state.filters.crossingTypes = new Set(CROSSING_TYPES);
+    state.filters.importanceLevels = new Set(IMPORTANCE_LEVELS);
     const specOptions = state.filterOptions.specYears ?? [];
     state.filters.specYears = specOptions.length ? new Set(specOptions) : new Set();
     const officeOptions = state.filterOptions.managementOffices ?? [];
@@ -577,6 +604,7 @@ const PC_POST_SEGMENTS = [
     syncBridgeTypeChips();
     syncInspectionChips();
     syncCrossingChips();
+    syncImportanceChips();
     syncSpecYearChips();
     renderManagementOfficeOptions(state.filterOptions.managementOffices);
     updatePcFilterUI();
@@ -1357,6 +1385,7 @@ const PC_POST_SEGMENTS = [
     const specYearLabel = normalizeSpecYear(values["新設設計時の適用基準"]);
     const inferredSpecYear = inferSpecYearFromYear(builtYear);
     const crossingType = deriveCrossingType(railStatus, roadManager);
+    const importanceLevel = normalizeImportance(values["橋の重要度"]);
     const spanLengthM =
       Number.isFinite(bridgeLengthValue) && Number.isFinite(spans) && spans > 0
         ? bridgeLengthValue / spans
@@ -1398,6 +1427,7 @@ const PC_POST_SEGMENTS = [
       specYearLabel: specYearLabel ?? null,
       specYearInferred: inferredSpecYear,
       crossingType,
+      importanceLevel,
       spanLengthM,
     };
   }
@@ -1427,6 +1457,14 @@ const PC_POST_SEGMENTS = [
       return "跨道橋";
     }
     return "その他";
+  }
+
+  function normalizeImportance(value) {
+    const normalized = normalizeForMatch(value);
+    if (!normalized) return "記載なし";
+    if (normalized.includes("A種") || normalized.includes("Ａ種") || normalized.includes("A種ノ橋")) return "Ａ種の橋";
+    if (normalized.includes("B種") || normalized.includes("Ｂ種") || normalized.includes("B種ノ橋")) return "Ｂ種の橋";
+    return "記載なし";
   }
 
   function derivePcMetadata(superstructureType, superstructureForm, materialRaw) {
@@ -2178,6 +2216,7 @@ function resolvePcPostKey(value) {
       spanLengthMax,
       managementOffices,
       crossingTypes,
+      importanceLevels,
     } = state.filters;
     const specYearFilterActive = specYears.size > 0;
     const officeFilterActive = managementOffices.size > 0;
@@ -2201,6 +2240,7 @@ function resolvePcPostKey(value) {
         const specYearValue = getRecordSpecYearValue(record, useSpecYearInference) || SPEC_YEAR_UNKNOWN;
         if (specYearFilterActive && !specYears.has(specYearValue)) return;
         if (!crossingTypes.has(record.crossingType)) return;
+        if (!importanceLevels.has(record.importanceLevel)) return;
         if (!passesNumericRange(record.builtYear, builtYearMin, builtYearMax)) return;
         if (!passesNumericRange(record.bridgeLengthM, lengthMin, lengthMax)) return;
         if (!passesNumericRange(record.spans, spanCountMin, spanCountMax)) return;
