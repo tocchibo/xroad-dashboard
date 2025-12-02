@@ -2195,23 +2195,23 @@
             </section>
             <section>
               <h3>橋の重要度</h3>
-              <p class="filter-info-summary">CSV の <code>橋の重要度</code> を A/B/記載なしにまとめてフィルタします。</p>
+              <p class="filter-info-summary"><code>橋の重要度</code> 列を正規化し、A/B/記載なしで絞り込みます。</p>
               <dl class="filter-info-table">
                 <dt>参照列</dt>
                 <dd><code>橋の重要度</code></dd>
                 <dt>判定ルール</dt>
                 <dd>
                   <ul class="filter-info-list">
-                    <li>Ａ種の橋: 「Ａ種」「A種」を含む</li>
-                    <li>Ｂ種の橋: 「Ｂ種」「B種」を含む</li>
-                    <li>記載なし: 上記以外・空欄</li>
+                    <li>Ａ種の橋: 「Ａ種」または「A種」を含む</li>
+                    <li>Ｂ種の橋: 「Ｂ種」または「B種」を含む</li>
+                    <li>記載なし: 上記に該当しない、または空欄</li>
                   </ul>
                 </dd>
               </dl>
             </section>
             <section>
               <h3>跨線橋 / 跨道橋</h3>
-              <p class="filter-info-summary">道路橋下状況から跨線橋・跨道橋を判定し、該当チップで表示対象を切り替えます。</p>
+              <p class="filter-info-summary">道路橋下状況から跨線橋・跨道橋・その他を一意に判定します。</p>
               <dl class="filter-info-table">
                 <dt>参照列</dt>
                 <dd><code>道路橋下状況_鉄道</code>&nbsp;/&nbsp;<code>道路橋下状況_道路_道路管理者</code></dd>
@@ -2220,7 +2220,7 @@
                   <ul class="filter-info-list">
                     <li>跨線橋: <code>道路橋下状況_鉄道</code> が「その他鉄道」または「新幹線」</li>
                     <li>跨道橋: 跨線橋に該当しないもののうち、<code>道路橋下状況_道路_道路管理者</code> が「その他」「高速道路会社」「国」「市区町村」「都道府県」「政令市」</li>
-                    <li>その他: 上記以外・空欄</li>
+                    <li>その他: 上記以外、または空欄</li>
                   </ul>
                 </dd>
               </dl>
