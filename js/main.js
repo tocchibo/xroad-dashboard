@@ -148,6 +148,7 @@ const PC_POST_SEGMENTS = [
       pcPost: new Set(PC_POST_SEGMENTS.map((segment) => segment.key)),
       builtYearMin: null,
       builtYearMax: null,
+      includeUnknownBuiltYear: false,
       lengthMin: null,
       lengthMax: null,
       spanCountMin: null,
@@ -217,6 +218,7 @@ const PC_POST_SEGMENTS = [
     pcPostFilter: document.querySelector("[data-filter-pc-post]"),
     builtYearMinInput: document.querySelector("[data-filter-built-min]"),
     builtYearMaxInput: document.querySelector("[data-filter-built-max]"),
+    builtYearUnknownToggle: document.querySelector("[data-filter-built-include-unknown]"),
     lengthMinInput: document.querySelector("[data-filter-length-min]"),
     lengthMaxInput: document.querySelector("[data-filter-length-max]"),
     spanCountMinInput: document.querySelector("[data-filter-spans-min]"),
@@ -588,6 +590,7 @@ const PC_POST_SEGMENTS = [
     state.filters.pcPost = new Set(PC_POST_SEGMENTS.map((segment) => segment.key));
     state.filters.builtYearMin = null;
     state.filters.builtYearMax = null;
+    state.filters.includeUnknownBuiltYear = false;
     state.filters.lengthMin = null;
     state.filters.lengthMax = null;
     state.filters.spanCountMin = null;
@@ -611,6 +614,7 @@ const PC_POST_SEGMENTS = [
     updateNumericPlaceholders(state.filterOptions);
     if (elements.culvertFilter) elements.culvertFilter.checked = false;
     if (elements.specYearInferToggle) elements.specYearInferToggle.checked = false;
+    if (elements.builtYearUnknownToggle) elements.builtYearUnknownToggle.checked = false;
     refreshAll();
   }
 
@@ -1138,6 +1142,7 @@ const PC_POST_SEGMENTS = [
 
   function bindAdvancedFilters() {
     bindSpecYearInferenceToggle();
+    bindBuiltYearUnknownToggle();
     bindManagementOfficeFilter();
     bindRangeInputs();
     bindRangeSliders();
@@ -1150,6 +1155,16 @@ const PC_POST_SEGMENTS = [
     checkbox.checked = state.filters.useSpecYearInference;
     checkbox.addEventListener("change", (event) => {
       state.filters.useSpecYearInference = Boolean(event.currentTarget.checked);
+      refreshAll();
+    });
+  }
+
+  function bindBuiltYearUnknownToggle() {
+    const checkbox = elements.builtYearUnknownToggle;
+    if (!checkbox) return;
+    checkbox.checked = Boolean(state.filters.includeUnknownBuiltYear);
+    checkbox.addEventListener("change", (event) => {
+      state.filters.includeUnknownBuiltYear = Boolean(event.currentTarget.checked);
       refreshAll();
     });
   }
@@ -2208,6 +2223,7 @@ function resolvePcPostKey(value) {
       useSpecYearInference,
       builtYearMin,
       builtYearMax,
+      includeUnknownBuiltYear,
       lengthMin,
       lengthMax,
       spanCountMin,
@@ -2241,7 +2257,14 @@ function resolvePcPostKey(value) {
         if (specYearFilterActive && !specYears.has(specYearValue)) return;
         if (!crossingTypes.has(record.crossingType)) return;
         if (!importanceLevels.has(record.importanceLevel)) return;
-        if (!passesNumericRange(record.builtYear, builtYearMin, builtYearMax)) return;
+        const builtYear = record.builtYear;
+        const builtYearRangeActive = builtYearMin !== null || builtYearMax !== null;
+        const builtYearPasses = passesNumericRange(builtYear, builtYearMin, builtYearMax);
+        if (!builtYearPasses) {
+          const allowUnknownBuiltYear =
+            includeUnknownBuiltYear && builtYearRangeActive && !Number.isFinite(builtYear);
+          if (!allowUnknownBuiltYear) return;
+        }
         if (!passesNumericRange(record.bridgeLengthM, lengthMin, lengthMax)) return;
         if (!passesNumericRange(record.spans, spanCountMin, spanCountMax)) return;
         if (!passesNumericRange(record.spanLengthM, spanLengthMin, spanLengthMax)) return;
