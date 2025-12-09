@@ -62,7 +62,7 @@
   const IMPORTANCE_LEVELS = ["Ａ種の橋", "Ｂ種の橋", "記載なし"];
   const CROSSING_TYPES = ["跨線橋", "跨道橋", "その他"];
   const CROSSING_RAIL_KEYWORDS = ["その他鉄道", "新幹線"];
-  const CROSSING_ROAD_MANAGERS = ["その他", "高速道路会社", "国", "市区町村", "都道府県", "政令市"];
+  const CROSSING_ROAD_MANAGERS = ["高速道路会社", "国", "市区町村", "都道府県", "政令市"];
 
   const SPEC_YEAR_UNKNOWN = "不明";
   const OFFICE_UNKNOWN_LABEL = "（未設定）";
