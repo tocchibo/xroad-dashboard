@@ -1965,7 +1965,7 @@
               </div>
             </div>
             <details class="filter-advanced" data-advanced-filters>
-              <summary>詳細フィルタ（示方書・事務所・年次など）</summary>
+              <summary>詳細フィルタ（示方書・事務所・路線・市区町村など）</summary>
               <div class="filter-advanced-body">
                 <div class="filter-row">
                   <div class="filter-section">
@@ -1983,6 +1983,22 @@
                       <option disabled selected>CSV を読み込んでください</option>
                     </select>
                     <p class="filter-helper">Ctrl / ⌘ キーを押しながらクリックで複数選択できます。</p>
+                  </div>
+                </div>
+                <div class="filter-row">
+                  <div class="filter-section">
+                    <p class="filter-label">路線名</p>
+                    <select multiple size="6" data-filter-route class="filter-multiselect" aria-label="路線名フィルタ" disabled>
+                      <option disabled selected>CSV を読み込んでください</option>
+                    </select>
+                    <p class="filter-helper">Ctrl / ? キーを押しながらクリックで複数選択できます。</p>
+                  </div>
+                  <div class="filter-section">
+                    <p class="filter-label">行政区域_市区町村名</p>
+                    <select multiple size="6" data-filter-municipality class="filter-multiselect" aria-label="市区町村フィルタ" disabled>
+                      <option disabled selected>CSV を読み込んでください</option>
+                    </select>
+                    <p class="filter-helper">Ctrl / ? キーを押しながらクリックで複数選択できます。</p>
                   </div>
                 </div>
                 <div class="range-grid">
@@ -2251,6 +2267,26 @@
               <dl class="filter-info-table">
                 <dt>参照列</dt>
                 <dd><code>道路管理者_管理事務所名</code></dd>
+                <dt>補足</dt>
+                <dd>空欄は「（未設定）」として扱います。dataset を追加・削除すると候補が自動で更新されます。</dd>
+              </dl>
+            </section>
+            <section>
+              <h3>路線名</h3>
+              <p class="filter-info-summary">読み込んだ CSV に出現する路線名を候補として表示し、複数選択で絞り込みます。</p>
+              <dl class="filter-info-table">
+                <dt>参照列</dt>
+                <dd><code>路線名</code></dd>
+                <dt>補足</dt>
+                <dd>空欄は「路線名未設定」として扱います。dataset を追加・削除すると候補が自動で更新されます。</dd>
+              </dl>
+            </section>
+            <section>
+              <h3>行政区域_市区町村名</h3>
+              <p class="filter-info-summary">読み込んだ CSV に出現する市区町村名を候補として表示し、複数選択で絞り込みます。</p>
+              <dl class="filter-info-table">
+                <dt>参照列</dt>
+                <dd><code>行政区域_市区町村名</code></dd>
                 <dt>補足</dt>
                 <dd>空欄は「（未設定）」として扱います。dataset を追加・削除すると候補が自動で更新されます。</dd>
               </dl>

@@ -66,6 +66,8 @@
 
   const SPEC_YEAR_UNKNOWN = "不明";
   const OFFICE_UNKNOWN_LABEL = "（未設定）";
+  const ROUTE_UNKNOWN_LABEL = "路線名未設定";
+  const MUNICIPALITY_UNKNOWN_LABEL = OFFICE_UNKNOWN_LABEL;
   const SPEC_YEAR_ORDER = [
     "S46耐震設計指針より前",
     "S46耐震設計指針",
@@ -156,12 +158,16 @@ const PC_POST_SEGMENTS = [
       spanLengthMin: null,
       spanLengthMax: null,
       managementOffices: new Set(),
+      routeNames: new Set(),
+      municipalities: new Set(),
       crossingTypes: new Set(CROSSING_TYPES),
       importanceLevels: new Set(IMPORTANCE_LEVELS),
     },
     filterOptions: {
       specYears: [],
       managementOffices: [],
+      routeNames: [],
+      municipalities: [],
       builtYear: { min: null, max: null },
       length: { min: null, max: null },
       spans: { min: null, max: null },
@@ -211,6 +217,8 @@ const PC_POST_SEGMENTS = [
     specYearFilter: document.querySelector("[data-filter-spec-year]"),
     specYearInferToggle: document.querySelector("[data-filter-spec-infer]"),
     managementOfficeFilter: document.querySelector("[data-filter-office]"),
+    routeFilter: document.querySelector("[data-filter-route]"),
+    municipalityFilter: document.querySelector("[data-filter-municipality]"),
     pcFilterToggle: document.querySelector("[data-pc-filter-toggle]"),
     pcFilterBody: document.querySelector("[data-pc-filter-body]"),
     pcFilterReset: document.querySelector("[data-pc-filter-reset]"),
@@ -570,14 +578,22 @@ const PC_POST_SEGMENTS = [
   function rebuildDynamicFilters() {
     const prevSpecOptions = state.filterOptions?.specYears ?? [];
     const prevOfficeOptions = state.filterOptions?.managementOffices ?? [];
+    const prevRouteOptions = state.filterOptions?.routeNames ?? [];
+    const prevMunicipalityOptions = state.filterOptions?.municipalities ?? [];
     const prevSpecSelection = new Set(state.filters.specYears);
     const prevOfficeSelection = new Set(state.filters.managementOffices);
+    const prevRouteSelection = new Set(state.filters.routeNames);
+    const prevMunicipalitySelection = new Set(state.filters.municipalities);
     const stats = collectFilterOptionStats();
     state.filterOptions = stats;
     syncSpecYearSelection(stats.specYears, prevSpecOptions, prevSpecSelection);
     syncManagementOfficeSelection(stats.managementOffices, prevOfficeOptions, prevOfficeSelection);
+    syncRouteSelection(stats.routeNames, prevRouteOptions, prevRouteSelection);
+    syncMunicipalitySelection(stats.municipalities, prevMunicipalityOptions, prevMunicipalitySelection);
     renderSpecYearChips(stats.specYears);
     renderManagementOfficeOptions(stats.managementOffices);
+    renderRouteOptions(stats.routeNames);
+    renderMunicipalityOptions(stats.municipalities);
     updateNumericPlaceholders(stats);
   }
 
@@ -603,6 +619,10 @@ const PC_POST_SEGMENTS = [
     state.filters.specYears = specOptions.length ? new Set(specOptions) : new Set();
     const officeOptions = state.filterOptions.managementOffices ?? [];
     state.filters.managementOffices = officeOptions.length ? new Set(officeOptions) : new Set();
+    const routeOptions = state.filterOptions.routeNames ?? [];
+    state.filters.routeNames = routeOptions.length ? new Set(routeOptions) : new Set();
+    const municipalityOptions = state.filterOptions.municipalities ?? [];
+    state.filters.municipalities = municipalityOptions.length ? new Set(municipalityOptions) : new Set();
 
     syncBridgeTypeChips();
     syncInspectionChips();
@@ -610,6 +630,8 @@ const PC_POST_SEGMENTS = [
     syncImportanceChips();
     syncSpecYearChips();
     renderManagementOfficeOptions(state.filterOptions.managementOffices);
+    renderRouteOptions(state.filterOptions.routeNames);
+    renderMunicipalityOptions(state.filterOptions.municipalities);
     updatePcFilterUI();
     updateNumericPlaceholders(state.filterOptions);
     if (elements.culvertFilter) elements.culvertFilter.checked = false;
@@ -621,6 +643,8 @@ const PC_POST_SEGMENTS = [
   function collectFilterOptionStats() {
     const specYearSet = new Set();
     const officeSet = new Set();
+    const routeSet = new Set();
+    const municipalitySet = new Set();
     let builtMin = null;
     let builtMax = null;
     let lengthMin = null;
@@ -662,6 +686,8 @@ const PC_POST_SEGMENTS = [
           specYearSet.add(record.specYearInferred);
         }
         officeSet.add(getManagementOfficeLabel(record));
+        routeSet.add(getRouteNameLabel(record));
+        municipalitySet.add(getMunicipalityLabel(record));
       });
     });
     if (hasUnknownSpec) {
@@ -670,6 +696,8 @@ const PC_POST_SEGMENTS = [
     return {
       specYears: sortSpecYearOptions(Array.from(specYearSet)),
       managementOffices: Array.from(officeSet).sort((a, b) => a.localeCompare(b, "ja-JP")),
+      routeNames: Array.from(routeSet).sort((a, b) => a.localeCompare(b, "ja-JP")),
+      municipalities: Array.from(municipalitySet).sort((a, b) => a.localeCompare(b, "ja-JP")),
       builtYear: { min: builtMin, max: builtMax },
       length: { min: lengthMin, max: lengthMax },
       spans: { min: spansMin, max: spansMax },
@@ -727,6 +755,54 @@ const PC_POST_SEGMENTS = [
       options.forEach((value) => next.add(value));
     }
     state.filters.managementOffices = next;
+  }
+
+  function syncRouteSelection(options, previousOptions = [], previousSelection = state.filters.routeNames) {
+    const prevOptionsCount = Array.isArray(previousOptions) ? previousOptions.length : 0;
+    const prevSelectionSet = previousSelection instanceof Set ? previousSelection : new Set();
+    const treatAsAllSelected = prevSelectionSet.size === 0 || prevSelectionSet.size === prevOptionsCount;
+    if (!options.length) {
+      state.filters.routeNames = new Set();
+      return;
+    }
+    if (treatAsAllSelected) {
+      state.filters.routeNames = new Set(options);
+      return;
+    }
+    const next = new Set();
+    options.forEach((value) => {
+      if (prevSelectionSet.has(value)) {
+        next.add(value);
+      }
+    });
+    if (!next.size) {
+      options.forEach((value) => next.add(value));
+    }
+    state.filters.routeNames = next;
+  }
+
+  function syncMunicipalitySelection(options, previousOptions = [], previousSelection = state.filters.municipalities) {
+    const prevOptionsCount = Array.isArray(previousOptions) ? previousOptions.length : 0;
+    const prevSelectionSet = previousSelection instanceof Set ? previousSelection : new Set();
+    const treatAsAllSelected = prevSelectionSet.size === 0 || prevSelectionSet.size === prevOptionsCount;
+    if (!options.length) {
+      state.filters.municipalities = new Set();
+      return;
+    }
+    if (treatAsAllSelected) {
+      state.filters.municipalities = new Set(options);
+      return;
+    }
+    const next = new Set();
+    options.forEach((value) => {
+      if (prevSelectionSet.has(value)) {
+        next.add(value);
+      }
+    });
+    if (!next.size) {
+      options.forEach((value) => next.add(value));
+    }
+    state.filters.municipalities = next;
   }
 
   function renderSpecYearChips(options) {
@@ -790,6 +866,52 @@ const PC_POST_SEGMENTS = [
       option.value = value;
       option.textContent = value;
       option.selected = state.filters.managementOffices.has(value);
+      select.appendChild(option);
+    });
+  }
+
+  function renderRouteOptions(options) {
+    const select = elements.routeFilter;
+    if (!select) return;
+    select.innerHTML = "";
+    if (!options.length) {
+      select.disabled = true;
+      const placeholder = document.createElement("option");
+      placeholder.textContent = "CSV を読み込んでください";
+      placeholder.disabled = true;
+      placeholder.selected = true;
+      select.appendChild(placeholder);
+      return;
+    }
+    select.disabled = false;
+    options.forEach((value) => {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = value;
+      option.selected = state.filters.routeNames.has(value);
+      select.appendChild(option);
+    });
+  }
+
+  function renderMunicipalityOptions(options) {
+    const select = elements.municipalityFilter;
+    if (!select) return;
+    select.innerHTML = "";
+    if (!options.length) {
+      select.disabled = true;
+      const placeholder = document.createElement("option");
+      placeholder.textContent = "CSV を読み込んでください";
+      placeholder.disabled = true;
+      placeholder.selected = true;
+      select.appendChild(placeholder);
+      return;
+    }
+    select.disabled = false;
+    options.forEach((value) => {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = value;
+      option.selected = state.filters.municipalities.has(value);
       select.appendChild(option);
     });
   }
@@ -1144,6 +1266,8 @@ const PC_POST_SEGMENTS = [
     bindSpecYearInferenceToggle();
     bindBuiltYearUnknownToggle();
     bindManagementOfficeFilter();
+    bindRouteFilter();
+    bindMunicipalityFilter();
     bindRangeInputs();
     bindRangeSliders();
     bindRangeClearButtons();
@@ -1175,6 +1299,26 @@ const PC_POST_SEGMENTS = [
     select.addEventListener("change", () => {
       const selected = new Set(Array.from(select.selectedOptions).map((option) => option.value));
       state.filters.managementOffices = selected;
+      refreshAll();
+    });
+  }
+
+  function bindRouteFilter() {
+    const select = elements.routeFilter;
+    if (!select) return;
+    select.addEventListener("change", () => {
+      const selected = new Set(Array.from(select.selectedOptions).map((option) => option.value));
+      state.filters.routeNames = selected;
+      refreshAll();
+    });
+  }
+
+  function bindMunicipalityFilter() {
+    const select = elements.municipalityFilter;
+    if (!select) return;
+    select.addEventListener("change", () => {
+      const selected = new Set(Array.from(select.selectedOptions).map((option) => option.value));
+      state.filters.municipalities = selected;
       refreshAll();
     });
   }
@@ -1384,6 +1528,9 @@ const PC_POST_SEGMENTS = [
     const managementOffice = sanitizeText(
       values["道路管理者_管理事務所名"] ?? values["道路管理者管理事務所名"]
     );
+    const municipalityName = sanitizeText(
+      values["行政区域_市区町村名"] ?? values["行政区域_市区町村"] ?? values["行政区域_市町村名"]
+    );
     const railStatus = sanitizeText(values["道路橋下状況_鉄道"]);
     const roadManager = sanitizeText(values["道路橋下状況_道路_道路管理者"]);
     const lat = parseNumber(values["起点側位置_緯度"]);
@@ -1422,13 +1569,14 @@ const PC_POST_SEGMENTS = [
       datasetId,
       datasetLabel: managementName || datasetId,
       facilityName: facilityName || "名称未設定",
-      routeName: routeName || "路線名未設定",
+      routeName: routeName || ROUTE_UNKNOWN_LABEL,
       builtYear: builtYear ?? null,
       bridgeLengthM: Number.isFinite(bridgeLengthValue) ? bridgeLengthValue : null,
       spans: Number.isFinite(spans) ? spans : null,
       materialRaw,
       managementName,
       managementOffice,
+      municipalityName: municipalityName || MUNICIPALITY_UNKNOWN_LABEL,
       lat: Number.isFinite(lat) ? lat : null,
       lng: Number.isFinite(lng) ? lng : null,
       inspectionYear: inspectionYear ?? null,
@@ -2231,11 +2379,15 @@ function resolvePcPostKey(value) {
       spanLengthMin,
       spanLengthMax,
       managementOffices,
+      routeNames,
+      municipalities,
       crossingTypes,
       importanceLevels,
     } = state.filters;
     const specYearFilterActive = specYears.size > 0;
     const officeFilterActive = managementOffices.size > 0;
+    const routeFilterActive = routeNames.size > 0;
+    const municipalityFilterActive = municipalities.size > 0;
     const culvertFilterEnabled = !skipCulvertFilter && state.filters.excludeCulvert;
     const records = [];
     state.datasets.forEach((dataset) => {
@@ -2253,6 +2405,8 @@ function resolvePcPostKey(value) {
         if (!inspectionLevels.has(record.inspectionLevel)) return;
         if (culvertFilterEnabled && record.isCulvert) return;
         if (officeFilterActive && !managementOffices.has(getManagementOfficeLabel(record))) return;
+        if (routeFilterActive && !routeNames.has(getRouteNameLabel(record))) return;
+        if (municipalityFilterActive && !municipalities.has(getMunicipalityLabel(record))) return;
         const specYearValue = getRecordSpecYearValue(record, useSpecYearInference) || SPEC_YEAR_UNKNOWN;
         if (specYearFilterActive && !specYears.has(specYearValue)) return;
         if (!crossingTypes.has(record.crossingType)) return;
@@ -2457,6 +2611,14 @@ function resolvePcPostKey(value) {
 
   function getManagementOfficeLabel(record) {
     return record.managementOffice?.trim() ? record.managementOffice : OFFICE_UNKNOWN_LABEL;
+  }
+
+  function getRouteNameLabel(record) {
+    return record.routeName?.trim() ? record.routeName : ROUTE_UNKNOWN_LABEL;
+  }
+
+  function getMunicipalityLabel(record) {
+    return record.municipalityName?.trim() ? record.municipalityName : MUNICIPALITY_UNKNOWN_LABEL;
   }
 
   function passesNumericRange(value, min, max) {
