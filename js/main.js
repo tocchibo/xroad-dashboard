@@ -192,6 +192,7 @@ const PC_POST_SEGMENTS = [
     prevMapCount: 0,
     lastUploadSummaries: [],
     mapMarkerScale: MAP_MARKER_BASE_SCALE,
+    mapGrayscale: false,
     cluster: {
       enabled: false,
     },
@@ -258,11 +259,13 @@ const PC_POST_SEGMENTS = [
       flagged: document.querySelector('[data-kpi="flagged"]'),
     },
     kpiCulvertHint: document.querySelector("[data-kpi-culvert-hint]"),
+    mapCanvas: document.getElementById("map"),
     mapCount: document.querySelector("[data-map-count]"),
     mapMissing: document.querySelector("[data-map-missing]"),
     mapSizeRange: document.querySelector("[data-marker-size-range]"),
     mapSizeLabel: document.querySelector("[data-marker-size-label]"),
     baseLayerSelect: document.querySelector("[data-base-layer]"),
+    mapGrayscaleToggle: document.querySelector("[data-map-grayscale-toggle]"),
     mapClusterToggle: document.querySelector("[data-map-cluster-toggle]"),
     clusterBlock: document.querySelector("[data-cluster-block]"),
     culvertHints: Array.from(document.querySelectorAll("[data-culvert-hint]")),
@@ -1249,27 +1252,40 @@ const PC_POST_SEGMENTS = [
 
   function bindMapControls() {
     const range = elements.mapSizeRange;
-    if (!range) return;
-    const clampDelta = (value) => Math.min(Math.max(value, MAP_MARKER_MIN_DELTA), MAP_MARKER_MAX_DELTA);
-    const updateLabel = () => {
-      if (elements.mapSizeLabel) {
-        const ratio = state.mapMarkerScale / MAP_MARKER_BASE_SCALE;
-        elements.mapSizeLabel.textContent = `${Math.round(ratio * 100)}%`;
-      }
-    };
-    const applyValue = (deltaPercent) => {
-      if (!Number.isFinite(deltaPercent)) return;
-      const clamped = clampDelta(deltaPercent);
-      state.mapMarkerScale = MAP_MARKER_BASE_SCALE * (1 + clamped / 100);
-      range.value = clamped;
-      updateLabel();
-      updateMap();
-    };
-    range.addEventListener("input", (event) => {
-      applyValue(Number(event.currentTarget.value));
-    });
-    const initialDelta = Number(range.value);
-    applyValue(Number.isFinite(initialDelta) ? initialDelta : 0);
+    if (range) {
+      const clampDelta = (value) => Math.min(Math.max(value, MAP_MARKER_MIN_DELTA), MAP_MARKER_MAX_DELTA);
+      const updateLabel = () => {
+        if (elements.mapSizeLabel) {
+          const ratio = state.mapMarkerScale / MAP_MARKER_BASE_SCALE;
+          elements.mapSizeLabel.textContent = `${Math.round(ratio * 100)}%`;
+        }
+      };
+      const applyValue = (deltaPercent) => {
+        if (!Number.isFinite(deltaPercent)) return;
+        const clamped = clampDelta(deltaPercent);
+        state.mapMarkerScale = MAP_MARKER_BASE_SCALE * (1 + clamped / 100);
+        range.value = clamped;
+        updateLabel();
+        updateMap();
+      };
+      range.addEventListener("input", (event) => {
+        applyValue(Number(event.currentTarget.value));
+      });
+      const initialDelta = Number(range.value);
+      applyValue(Number.isFinite(initialDelta) ? initialDelta : 0);
+    }
+    const grayscaleToggle = elements.mapGrayscaleToggle;
+    if (grayscaleToggle) {
+      const applyGrayscale = (enabled) => {
+        state.mapGrayscale = Boolean(enabled);
+        elements.mapCanvas?.classList.toggle("is-grayscale", state.mapGrayscale);
+      };
+      grayscaleToggle.checked = state.mapGrayscale;
+      grayscaleToggle.addEventListener("change", (event) => {
+        applyGrayscale(event.currentTarget.checked);
+      });
+      applyGrayscale(grayscaleToggle.checked);
+    }
   }
 
   function bindClusterControls() {
