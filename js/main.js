@@ -218,6 +218,11 @@ const PC_POST_SEGMENTS = [
     specYearInferToggle: document.querySelector("[data-filter-spec-infer]"),
     managementOfficeFilter: document.querySelector("[data-filter-office]"),
     routeFilter: document.querySelector("[data-filter-route]"),
+    routeFilterSearch: document.querySelector("[data-filter-route-search]"),
+    routeFilterSelectAll: document.querySelector("[data-filter-route-select-all]"),
+    routeFilterClear: document.querySelector("[data-filter-route-clear]"),
+    routeFilterCount: document.querySelector("[data-filter-route-count]"),
+    routeFilterList: document.querySelector("[data-filter-route-list]"),
     municipalityFilter: document.querySelector("[data-filter-municipality]"),
     pcFilterToggle: document.querySelector("[data-pc-filter-toggle]"),
     pcFilterBody: document.querySelector("[data-pc-filter-body]"),
@@ -621,6 +626,7 @@ const PC_POST_SEGMENTS = [
     state.filters.managementOffices = officeOptions.length ? new Set(officeOptions) : new Set();
     const routeOptions = state.filterOptions.routeNames ?? [];
     state.filters.routeNames = routeOptions.length ? new Set(routeOptions) : new Set();
+    if (elements.routeFilterSearch) elements.routeFilterSearch.value = "";
     const municipalityOptions = state.filterOptions.municipalities ?? [];
     state.filters.municipalities = municipalityOptions.length ? new Set(municipalityOptions) : new Set();
 
@@ -870,27 +876,81 @@ const PC_POST_SEGMENTS = [
     });
   }
 
-  function renderRouteOptions(options) {
-    const select = elements.routeFilter;
-    if (!select) return;
-    select.innerHTML = "";
-    if (!options.length) {
-      select.disabled = true;
-      const placeholder = document.createElement("option");
-      placeholder.textContent = "CSV を読み込んでください";
-      placeholder.disabled = true;
-      placeholder.selected = true;
-      select.appendChild(placeholder);
+  function getRouteSearchQuery() {
+    const input = elements.routeFilterSearch;
+    if (!input) return "";
+    return normalizeForMatch(input.value.trim());
+  }
+
+  function getFilteredRouteOptions(options) {
+    const query = getRouteSearchQuery();
+    if (!query) return options;
+    return options.filter((value) => normalizeForMatch(value).includes(query));
+  }
+
+  function updateRouteFilterCount(options) {
+    const count = elements.routeFilterCount;
+    if (!count) return;
+    const total = options.length;
+    if (!total) {
+      count.textContent = "0件";
       return;
     }
-    select.disabled = false;
-    options.forEach((value) => {
-      const option = document.createElement("option");
-      option.value = value;
-      option.textContent = value;
-      option.selected = state.filters.routeNames.has(value);
-      select.appendChild(option);
+    const visible = getFilteredRouteOptions(options).length;
+    const selected = state.filters.routeNames.size;
+    const selectionLabel =
+      selected === total ? "全選択" : selected === 0 ? "選択 0 件" : `選択 ${formatNumber(selected)} 件`;
+    count.textContent = `表示 ${formatNumber(visible)} / 全 ${formatNumber(total)} 件 ・${selectionLabel}`;
+  }
+
+  function renderRouteOptions(options) {
+    const list = elements.routeFilterList;
+    if (!list) return;
+    list.innerHTML = "";
+    if (elements.routeFilterSearch) {
+      elements.routeFilterSearch.disabled = !options.length;
+      if (!options.length) {
+        elements.routeFilterSearch.value = "";
+      }
+    }
+    if (elements.routeFilterSelectAll) {
+      elements.routeFilterSelectAll.disabled = !options.length;
+    }
+    if (elements.routeFilterClear) {
+      elements.routeFilterClear.disabled = !options.length;
+    }
+    if (!options.length) {
+      const placeholder = document.createElement("p");
+      placeholder.className = "filter-placeholder";
+      placeholder.textContent = "CSV を読み込んでください";
+      list.appendChild(placeholder);
+      updateRouteFilterCount(options);
+      return;
+    }
+    const filtered = getFilteredRouteOptions(options);
+    if (!filtered.length) {
+      const empty = document.createElement("p");
+      empty.className = "filter-placeholder";
+      empty.textContent = "該当する路線名がありません";
+      list.appendChild(empty);
+      updateRouteFilterCount(options);
+      return;
+    }
+    filtered.forEach((value) => {
+      const label = document.createElement("label");
+      label.className = "filter-checklist-item";
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.value = value;
+      checkbox.checked = state.filters.routeNames.has(value);
+      checkbox.dataset.routeOption = "true";
+      const text = document.createElement("span");
+      text.className = "filter-checklist-label";
+      text.textContent = value;
+      label.append(checkbox, text);
+      list.appendChild(label);
     });
+    updateRouteFilterCount(options);
   }
 
   function renderMunicipalityOptions(options) {
@@ -1304,11 +1364,44 @@ const PC_POST_SEGMENTS = [
   }
 
   function bindRouteFilter() {
-    const select = elements.routeFilter;
-    if (!select) return;
-    select.addEventListener("change", () => {
-      const selected = new Set(Array.from(select.selectedOptions).map((option) => option.value));
-      state.filters.routeNames = selected;
+    const list = elements.routeFilterList;
+    if (list) {
+      list.addEventListener("change", (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLInputElement)) return;
+        if (!target.matches('input[type="checkbox"][data-route-option="true"]')) return;
+        const value = target.value;
+        if (target.checked) {
+          state.filters.routeNames.add(value);
+        } else {
+          state.filters.routeNames.delete(value);
+        }
+        updateRouteFilterCount(state.filterOptions?.routeNames ?? []);
+        refreshAll();
+      });
+    }
+    elements.routeFilterSearch?.addEventListener("input", () => {
+      renderRouteOptions(state.filterOptions?.routeNames ?? []);
+    });
+    elements.routeFilterSelectAll?.addEventListener("click", () => {
+      const options = state.filterOptions?.routeNames ?? [];
+      const visible = getFilteredRouteOptions(options);
+      if (!visible.length) return;
+      const next = new Set(state.filters.routeNames);
+      visible.forEach((value) => next.add(value));
+      state.filters.routeNames = next;
+      renderRouteOptions(options);
+      refreshAll();
+    });
+    elements.routeFilterClear?.addEventListener("click", () => {
+      const options = state.filterOptions?.routeNames ?? [];
+      const visible = getFilteredRouteOptions(options);
+      if (!visible.length) return;
+      if (!state.filters.routeNames.size) return;
+      const next = new Set(state.filters.routeNames);
+      visible.forEach((value) => next.delete(value));
+      state.filters.routeNames = next;
+      renderRouteOptions(options);
       refreshAll();
     });
   }
@@ -2386,7 +2479,6 @@ function resolvePcPostKey(value) {
     } = state.filters;
     const specYearFilterActive = specYears.size > 0;
     const officeFilterActive = managementOffices.size > 0;
-    const routeFilterActive = routeNames.size > 0;
     const municipalityFilterActive = municipalities.size > 0;
     const culvertFilterEnabled = !skipCulvertFilter && state.filters.excludeCulvert;
     const records = [];
@@ -2405,7 +2497,7 @@ function resolvePcPostKey(value) {
         if (!inspectionLevels.has(record.inspectionLevel)) return;
         if (culvertFilterEnabled && record.isCulvert) return;
         if (officeFilterActive && !managementOffices.has(getManagementOfficeLabel(record))) return;
-        if (routeFilterActive && !routeNames.has(getRouteNameLabel(record))) return;
+        if (!routeNames.has(getRouteNameLabel(record))) return;
         if (municipalityFilterActive && !municipalities.has(getMunicipalityLabel(record))) return;
         const specYearValue = getRecordSpecYearValue(record, useSpecYearInference) || SPEC_YEAR_UNKNOWN;
         if (specYearFilterActive && !specYears.has(specYearValue)) return;

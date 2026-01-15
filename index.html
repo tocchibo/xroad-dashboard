@@ -1988,10 +1988,29 @@
                 <div class="filter-row">
                   <div class="filter-section">
                     <p class="filter-label">路線名</p>
-                    <select multiple size="6" data-filter-route class="filter-multiselect" aria-label="路線名フィルタ" disabled>
-                      <option disabled selected>CSV を読み込んでください</option>
-                    </select>
-                    <p class="filter-helper">Ctrl / ? キーを押しながらクリックで複数選択できます。</p>
+                    <div class="filter-checklist" data-filter-route aria-label="路線名フィルタ">
+                      <div class="filter-checklist-toolbar">
+                        <input
+                          type="search"
+                          class="filter-search"
+                          data-filter-route-search
+                          placeholder="路線名を検索"
+                          aria-label="路線名 検索"
+                          disabled
+                        />
+                        <div class="filter-checklist-actions">
+                          <button type="button" class="filter-action" data-filter-route-select-all disabled>全選択</button>
+                          <button type="button" class="filter-action" data-filter-route-clear disabled>全解除</button>
+                        </div>
+                      </div>
+                      <div class="filter-checklist-meta" data-filter-route-count>0件</div>
+                      <div class="filter-checklist-list" data-filter-route-list>
+                        <p class="filter-placeholder">CSV を読み込んでください</p>
+                      </div>
+                    </div>
+                    <p class="filter-helper">
+                      チェックボックスで複数選択できます。検索で候補を絞り込み、表示中をまとめて選択・解除できます。
+                    </p>
                   </div>
                   <div class="filter-section">
                     <p class="filter-label">行政区域_市区町村名</p>
@@ -2273,7 +2292,9 @@
             </section>
             <section>
               <h3>路線名</h3>
-              <p class="filter-info-summary">読み込んだ CSV に出現する路線名を候補として表示し、複数選択で絞り込みます。</p>
+              <p class="filter-info-summary">
+                読み込んだ CSV に出現する路線名を候補として表示し、チェックボックスで複数選択して絞り込みます。検索で候補を絞れます。
+              </p>
               <dl class="filter-info-table">
                 <dt>参照列</dt>
                 <dd><code>路線名</code></dd>
