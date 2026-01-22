@@ -218,6 +218,11 @@ const PC_POST_SEGMENTS = [
     specYearFilter: document.querySelector("[data-filter-spec-year]"),
     specYearInferToggle: document.querySelector("[data-filter-spec-infer]"),
     managementOfficeFilter: document.querySelector("[data-filter-office]"),
+    managementOfficeFilterSearch: document.querySelector("[data-filter-office-search]"),
+    managementOfficeFilterSelectAll: document.querySelector("[data-filter-office-select-all]"),
+    managementOfficeFilterClear: document.querySelector("[data-filter-office-clear]"),
+    managementOfficeFilterCount: document.querySelector("[data-filter-office-count]"),
+    managementOfficeFilterList: document.querySelector("[data-filter-office-list]"),
     routeFilter: document.querySelector("[data-filter-route]"),
     routeFilterSearch: document.querySelector("[data-filter-route-search]"),
     routeFilterSelectAll: document.querySelector("[data-filter-route-select-all]"),
@@ -225,6 +230,11 @@ const PC_POST_SEGMENTS = [
     routeFilterCount: document.querySelector("[data-filter-route-count]"),
     routeFilterList: document.querySelector("[data-filter-route-list]"),
     municipalityFilter: document.querySelector("[data-filter-municipality]"),
+    municipalityFilterSearch: document.querySelector("[data-filter-municipality-search]"),
+    municipalityFilterSelectAll: document.querySelector("[data-filter-municipality-select-all]"),
+    municipalityFilterClear: document.querySelector("[data-filter-municipality-clear]"),
+    municipalityFilterCount: document.querySelector("[data-filter-municipality-count]"),
+    municipalityFilterList: document.querySelector("[data-filter-municipality-list]"),
     pcFilterToggle: document.querySelector("[data-pc-filter-toggle]"),
     pcFilterBody: document.querySelector("[data-pc-filter-body]"),
     pcFilterReset: document.querySelector("[data-pc-filter-reset]"),
@@ -627,11 +637,13 @@ const PC_POST_SEGMENTS = [
     state.filters.specYears = specOptions.length ? new Set(specOptions) : new Set();
     const officeOptions = state.filterOptions.managementOffices ?? [];
     state.filters.managementOffices = officeOptions.length ? new Set(officeOptions) : new Set();
+    if (elements.managementOfficeFilterSearch) elements.managementOfficeFilterSearch.value = "";
     const routeOptions = state.filterOptions.routeNames ?? [];
     state.filters.routeNames = routeOptions.length ? new Set(routeOptions) : new Set();
     if (elements.routeFilterSearch) elements.routeFilterSearch.value = "";
     const municipalityOptions = state.filterOptions.municipalities ?? [];
     state.filters.municipalities = municipalityOptions.length ? new Set(municipalityOptions) : new Set();
+    if (elements.municipalityFilterSearch) elements.municipalityFilterSearch.value = "";
 
     syncBridgeTypeChips();
     syncInspectionChips();
@@ -856,27 +868,81 @@ const PC_POST_SEGMENTS = [
     });
   }
 
-  function renderManagementOfficeOptions(options) {
-    const select = elements.managementOfficeFilter;
-    if (!select) return;
-    select.innerHTML = "";
-    if (!options.length) {
-      select.disabled = true;
-      const placeholder = document.createElement("option");
-      placeholder.textContent = "CSV を読み込んでください";
-      placeholder.disabled = true;
-      placeholder.selected = true;
-      select.appendChild(placeholder);
+  function getManagementOfficeSearchQuery() {
+    const input = elements.managementOfficeFilterSearch;
+    if (!input) return "";
+    return normalizeForMatch(input.value.trim());
+  }
+
+  function getFilteredManagementOfficeOptions(options) {
+    const query = getManagementOfficeSearchQuery();
+    if (!query) return options;
+    return options.filter((value) => normalizeForMatch(value).includes(query));
+  }
+
+  function updateManagementOfficeFilterCount(options) {
+    const count = elements.managementOfficeFilterCount;
+    if (!count) return;
+    const total = options.length;
+    if (!total) {
+      count.textContent = "0件";
       return;
     }
-    select.disabled = false;
-    options.forEach((value) => {
-      const option = document.createElement("option");
-      option.value = value;
-      option.textContent = value;
-      option.selected = state.filters.managementOffices.has(value);
-      select.appendChild(option);
+    const visible = getFilteredManagementOfficeOptions(options).length;
+    const selected = state.filters.managementOffices.size;
+    const selectionLabel =
+      selected === total ? "全選択" : selected === 0 ? "選択 0 件" : `選択 ${formatNumber(selected)} 件`;
+    count.textContent = `表示 ${formatNumber(visible)} / 全 ${formatNumber(total)} 件 ・${selectionLabel}`;
+  }
+
+  function renderManagementOfficeOptions(options) {
+    const list = elements.managementOfficeFilterList;
+    if (!list) return;
+    list.innerHTML = "";
+    if (elements.managementOfficeFilterSearch) {
+      elements.managementOfficeFilterSearch.disabled = !options.length;
+      if (!options.length) {
+        elements.managementOfficeFilterSearch.value = "";
+      }
+    }
+    if (elements.managementOfficeFilterSelectAll) {
+      elements.managementOfficeFilterSelectAll.disabled = !options.length;
+    }
+    if (elements.managementOfficeFilterClear) {
+      elements.managementOfficeFilterClear.disabled = !options.length;
+    }
+    if (!options.length) {
+      const placeholder = document.createElement("p");
+      placeholder.className = "filter-placeholder";
+      placeholder.textContent = "CSV を読み込んでください";
+      list.appendChild(placeholder);
+      updateManagementOfficeFilterCount(options);
+      return;
+    }
+    const filtered = getFilteredManagementOfficeOptions(options);
+    if (!filtered.length) {
+      const empty = document.createElement("p");
+      empty.className = "filter-placeholder";
+      empty.textContent = "該当する管理事務所名がありません";
+      list.appendChild(empty);
+      updateManagementOfficeFilterCount(options);
+      return;
+    }
+    filtered.forEach((value) => {
+      const label = document.createElement("label");
+      label.className = "filter-checklist-item";
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.value = value;
+      checkbox.checked = state.filters.managementOffices.has(value);
+      checkbox.dataset.officeOption = "true";
+      const text = document.createElement("span");
+      text.className = "filter-checklist-label";
+      text.textContent = value;
+      label.append(checkbox, text);
+      list.appendChild(label);
     });
+    updateManagementOfficeFilterCount(options);
   }
 
   function getRouteSearchQuery() {
@@ -956,27 +1022,81 @@ const PC_POST_SEGMENTS = [
     updateRouteFilterCount(options);
   }
 
-  function renderMunicipalityOptions(options) {
-    const select = elements.municipalityFilter;
-    if (!select) return;
-    select.innerHTML = "";
-    if (!options.length) {
-      select.disabled = true;
-      const placeholder = document.createElement("option");
-      placeholder.textContent = "CSV を読み込んでください";
-      placeholder.disabled = true;
-      placeholder.selected = true;
-      select.appendChild(placeholder);
+  function getMunicipalitySearchQuery() {
+    const input = elements.municipalityFilterSearch;
+    if (!input) return "";
+    return normalizeForMatch(input.value.trim());
+  }
+
+  function getFilteredMunicipalityOptions(options) {
+    const query = getMunicipalitySearchQuery();
+    if (!query) return options;
+    return options.filter((value) => normalizeForMatch(value).includes(query));
+  }
+
+  function updateMunicipalityFilterCount(options) {
+    const count = elements.municipalityFilterCount;
+    if (!count) return;
+    const total = options.length;
+    if (!total) {
+      count.textContent = "0件";
       return;
     }
-    select.disabled = false;
-    options.forEach((value) => {
-      const option = document.createElement("option");
-      option.value = value;
-      option.textContent = value;
-      option.selected = state.filters.municipalities.has(value);
-      select.appendChild(option);
+    const visible = getFilteredMunicipalityOptions(options).length;
+    const selected = state.filters.municipalities.size;
+    const selectionLabel =
+      selected === total ? "全選択" : selected === 0 ? "選択 0 件" : `選択 ${formatNumber(selected)} 件`;
+    count.textContent = `表示 ${formatNumber(visible)} / 全 ${formatNumber(total)} 件 ・${selectionLabel}`;
+  }
+
+  function renderMunicipalityOptions(options) {
+    const list = elements.municipalityFilterList;
+    if (!list) return;
+    list.innerHTML = "";
+    if (elements.municipalityFilterSearch) {
+      elements.municipalityFilterSearch.disabled = !options.length;
+      if (!options.length) {
+        elements.municipalityFilterSearch.value = "";
+      }
+    }
+    if (elements.municipalityFilterSelectAll) {
+      elements.municipalityFilterSelectAll.disabled = !options.length;
+    }
+    if (elements.municipalityFilterClear) {
+      elements.municipalityFilterClear.disabled = !options.length;
+    }
+    if (!options.length) {
+      const placeholder = document.createElement("p");
+      placeholder.className = "filter-placeholder";
+      placeholder.textContent = "CSV を読み込んでください";
+      list.appendChild(placeholder);
+      updateMunicipalityFilterCount(options);
+      return;
+    }
+    const filtered = getFilteredMunicipalityOptions(options);
+    if (!filtered.length) {
+      const empty = document.createElement("p");
+      empty.className = "filter-placeholder";
+      empty.textContent = "該当する市区町村名がありません";
+      list.appendChild(empty);
+      updateMunicipalityFilterCount(options);
+      return;
+    }
+    filtered.forEach((value) => {
+      const label = document.createElement("label");
+      label.className = "filter-checklist-item";
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.value = value;
+      checkbox.checked = state.filters.municipalities.has(value);
+      checkbox.dataset.municipalityOption = "true";
+      const text = document.createElement("span");
+      text.className = "filter-checklist-label";
+      text.textContent = value;
+      label.append(checkbox, text);
+      list.appendChild(label);
     });
+    updateMunicipalityFilterCount(options);
   }
 
   function updateNumericPlaceholders(stats) {
@@ -1370,11 +1490,44 @@ const PC_POST_SEGMENTS = [
   }
 
   function bindManagementOfficeFilter() {
-    const select = elements.managementOfficeFilter;
-    if (!select) return;
-    select.addEventListener("change", () => {
-      const selected = new Set(Array.from(select.selectedOptions).map((option) => option.value));
-      state.filters.managementOffices = selected;
+    const list = elements.managementOfficeFilterList;
+    if (list) {
+      list.addEventListener("change", (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLInputElement)) return;
+        if (!target.matches('input[type="checkbox"][data-office-option="true"]')) return;
+        const value = target.value;
+        if (target.checked) {
+          state.filters.managementOffices.add(value);
+        } else {
+          state.filters.managementOffices.delete(value);
+        }
+        updateManagementOfficeFilterCount(state.filterOptions?.managementOffices ?? []);
+        refreshAll();
+      });
+    }
+    elements.managementOfficeFilterSearch?.addEventListener("input", () => {
+      renderManagementOfficeOptions(state.filterOptions?.managementOffices ?? []);
+    });
+    elements.managementOfficeFilterSelectAll?.addEventListener("click", () => {
+      const options = state.filterOptions?.managementOffices ?? [];
+      const visible = getFilteredManagementOfficeOptions(options);
+      if (!visible.length) return;
+      const next = new Set(state.filters.managementOffices);
+      visible.forEach((value) => next.add(value));
+      state.filters.managementOffices = next;
+      renderManagementOfficeOptions(options);
+      refreshAll();
+    });
+    elements.managementOfficeFilterClear?.addEventListener("click", () => {
+      const options = state.filterOptions?.managementOffices ?? [];
+      const visible = getFilteredManagementOfficeOptions(options);
+      if (!visible.length) return;
+      if (!state.filters.managementOffices.size) return;
+      const next = new Set(state.filters.managementOffices);
+      visible.forEach((value) => next.delete(value));
+      state.filters.managementOffices = next;
+      renderManagementOfficeOptions(options);
       refreshAll();
     });
   }
@@ -1423,11 +1576,44 @@ const PC_POST_SEGMENTS = [
   }
 
   function bindMunicipalityFilter() {
-    const select = elements.municipalityFilter;
-    if (!select) return;
-    select.addEventListener("change", () => {
-      const selected = new Set(Array.from(select.selectedOptions).map((option) => option.value));
-      state.filters.municipalities = selected;
+    const list = elements.municipalityFilterList;
+    if (list) {
+      list.addEventListener("change", (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLInputElement)) return;
+        if (!target.matches('input[type="checkbox"][data-municipality-option="true"]')) return;
+        const value = target.value;
+        if (target.checked) {
+          state.filters.municipalities.add(value);
+        } else {
+          state.filters.municipalities.delete(value);
+        }
+        updateMunicipalityFilterCount(state.filterOptions?.municipalities ?? []);
+        refreshAll();
+      });
+    }
+    elements.municipalityFilterSearch?.addEventListener("input", () => {
+      renderMunicipalityOptions(state.filterOptions?.municipalities ?? []);
+    });
+    elements.municipalityFilterSelectAll?.addEventListener("click", () => {
+      const options = state.filterOptions?.municipalities ?? [];
+      const visible = getFilteredMunicipalityOptions(options);
+      if (!visible.length) return;
+      const next = new Set(state.filters.municipalities);
+      visible.forEach((value) => next.add(value));
+      state.filters.municipalities = next;
+      renderMunicipalityOptions(options);
+      refreshAll();
+    });
+    elements.municipalityFilterClear?.addEventListener("click", () => {
+      const options = state.filterOptions?.municipalities ?? [];
+      const visible = getFilteredMunicipalityOptions(options);
+      if (!visible.length) return;
+      if (!state.filters.municipalities.size) return;
+      const next = new Set(state.filters.municipalities);
+      visible.forEach((value) => next.delete(value));
+      state.filters.municipalities = next;
+      renderMunicipalityOptions(options);
       refreshAll();
     });
   }
@@ -2494,8 +2680,6 @@ function resolvePcPostKey(value) {
       importanceLevels,
     } = state.filters;
     const specYearFilterActive = specYears.size > 0;
-    const officeFilterActive = managementOffices.size > 0;
-    const municipalityFilterActive = municipalities.size > 0;
     const culvertFilterEnabled = !skipCulvertFilter && state.filters.excludeCulvert;
     const records = [];
     state.datasets.forEach((dataset) => {
@@ -2512,9 +2696,9 @@ function resolvePcPostKey(value) {
         }
         if (!inspectionLevels.has(record.inspectionLevel)) return;
         if (culvertFilterEnabled && record.isCulvert) return;
-        if (officeFilterActive && !managementOffices.has(getManagementOfficeLabel(record))) return;
+        if (!managementOffices.has(getManagementOfficeLabel(record))) return;
         if (!routeNames.has(getRouteNameLabel(record))) return;
-        if (municipalityFilterActive && !municipalities.has(getMunicipalityLabel(record))) return;
+        if (!municipalities.has(getMunicipalityLabel(record))) return;
         const specYearValue = getRecordSpecYearValue(record, useSpecYearInference) || SPEC_YEAR_UNKNOWN;
         if (specYearFilterActive && !specYears.has(specYearValue)) return;
         if (!crossingTypes.has(record.crossingType)) return;
