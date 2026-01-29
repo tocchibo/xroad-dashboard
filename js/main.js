@@ -98,6 +98,8 @@ const PC_POST_SEGMENTS = [
   const PC_POST_KEYS = new Set(PC_POST_SEGMENTS.map((segment) => segment.key));
 
   const DATASET_COLORS = ["#0ea5e9", "#10b981", "#f97316", "#ec4899", "#6366f1", "#14b8a6"];
+  const SPAN_COUNT_BIN_SIZE = 1;
+  const SPAN_LENGTH_BIN_SIZE = 5;
   const DEFAULT_MAP_CENTER = [36.2048, 138.2529];
   const MAP_MARKER_BASE_SCALE = 0.55;
   const MAP_MARKER_MIN_DELTA = -50;
@@ -177,6 +179,8 @@ const PC_POST_SEGMENTS = [
       stock: null,
       rating: null,
       length: null,
+      spanCount: null,
+      spanLength: null,
       year: null,
       pcTension: null,
       pcPost: null,
@@ -2133,6 +2137,8 @@ function resolvePcPostKey(value) {
     updateStockChart();
     updateRatingChart();
     updateLengthChart();
+    updateSpanCountChart();
+    updateSpanLengthChart();
     updateYearChart();
     updatePcTensionChart();
     updatePcPostChart();
@@ -2163,6 +2169,86 @@ function resolvePcPostKey(value) {
     });
 
     state.charts.length = createChart("chart-length", {
+      data: {
+        labels: [],
+        datasets: [
+          {
+            type: "line",
+            label: "累積相対度数",
+            data: [],
+            yAxisID: "y1",
+            borderColor: "#4b5563",
+            tension: 0,
+            borderWidth: 2,
+            backgroundColor: "#4b5563",
+            pointRadius: 0,
+            pointHoverRadius: 0,
+            pointBackgroundColor: "#4b5563",
+            fill: false,
+          },
+          { type: "bar", label: "橋梁数", data: [], backgroundColor: "#0ea5e9" },
+        ],
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: { beginAtZero: true, title: { display: true, text: "橋梁数" } },
+          y1: {
+            position: "right",
+            beginAtZero: true,
+            grid: { drawOnChartArea: false },
+            title: { display: true, text: "累積相対度数 (%)" },
+            min: 0,
+            max: 100,
+            ticks: {
+              callback: (value) => `${value}%`,
+            },
+          },
+        },
+      },
+    });
+
+    state.charts.spanCount = createChart("chart-span-count", {
+      data: {
+        labels: [],
+        datasets: [
+          {
+            type: "line",
+            label: "累積相対度数",
+            data: [],
+            yAxisID: "y1",
+            borderColor: "#4b5563",
+            tension: 0,
+            borderWidth: 2,
+            backgroundColor: "#4b5563",
+            pointRadius: 0,
+            pointHoverRadius: 0,
+            pointBackgroundColor: "#4b5563",
+            fill: false,
+          },
+          { type: "bar", label: "橋梁数", data: [], backgroundColor: "#0ea5e9" },
+        ],
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: { beginAtZero: true, title: { display: true, text: "橋梁数" } },
+          y1: {
+            position: "right",
+            beginAtZero: true,
+            grid: { drawOnChartArea: false },
+            title: { display: true, text: "累積相対度数 (%)" },
+            min: 0,
+            max: 100,
+            ticks: {
+              callback: (value) => `${value}%`,
+            },
+          },
+        },
+      },
+    });
+
+    state.charts.spanLength = createChart("chart-span-length", {
       data: {
         labels: [],
         datasets: [
@@ -2371,6 +2457,91 @@ function resolvePcPostKey(value) {
     counts.reduce((sum, count, index) => {
       const nextSum = sum + count;
       cumulativeRelative[index] = Number(((nextSum / records.length) * 100).toFixed(1));
+      return nextSum;
+    }, 0);
+    chart.data.labels = labels;
+    barDataset.data = counts;
+    lineDataset.data = cumulativeRelative;
+    chart.update();
+  }
+
+  function updateSpanCountChart() {
+    const chart = state.charts.spanCount;
+    if (!chart) return;
+    const lineDataset = chart.data.datasets.find((dataset) => dataset.type === "line");
+    const barDataset = chart.data.datasets.find((dataset) => dataset.type === "bar");
+    if (!lineDataset || !barDataset) return;
+    const values = getFilteredRecords()
+      .map((record) => record.spans)
+      .filter((value) => Number.isFinite(value));
+    if (!values.length) {
+      chart.data.labels = [];
+      lineDataset.data = [];
+      barDataset.data = [];
+      chart.update();
+      return;
+    }
+    const binSize = SPAN_COUNT_BIN_SIZE;
+    const minValue = Math.min(...values);
+    const maxValue = Math.max(...values);
+    const start = Math.floor(minValue);
+    const binCount = Math.max(1, Math.ceil((maxValue - start) / binSize));
+    const labels = Array.from({ length: binCount }, (_, index) => {
+      const rangeStart = start + index * binSize;
+      const rangeEnd = rangeStart + binSize;
+      return `${rangeStart}-${rangeEnd}径間`;
+    });
+    const counts = new Array(binCount).fill(0);
+    values.forEach((value) => {
+      const index = Math.min(Math.floor((value - start) / binSize), binCount - 1);
+      if (index < 0) return;
+      counts[index] += 1;
+    });
+    const cumulativeRelative = [];
+    counts.reduce((sum, count, index) => {
+      const nextSum = sum + count;
+      cumulativeRelative[index] = Number(((nextSum / values.length) * 100).toFixed(1));
+      return nextSum;
+    }, 0);
+    chart.data.labels = labels;
+    barDataset.data = counts;
+    lineDataset.data = cumulativeRelative;
+    chart.update();
+  }
+
+  function updateSpanLengthChart() {
+    const chart = state.charts.spanLength;
+    if (!chart) return;
+    const lineDataset = chart.data.datasets.find((dataset) => dataset.type === "line");
+    const barDataset = chart.data.datasets.find((dataset) => dataset.type === "bar");
+    if (!lineDataset || !barDataset) return;
+    const values = getFilteredRecords()
+      .map((record) => record.spanLengthM)
+      .filter((value) => Number.isFinite(value));
+    if (!values.length) {
+      chart.data.labels = [];
+      lineDataset.data = [];
+      barDataset.data = [];
+      chart.update();
+      return;
+    }
+    const binSize = SPAN_LENGTH_BIN_SIZE;
+    const maxValue = Math.max(...values);
+    const binCount = Math.max(1, Math.ceil(maxValue / binSize));
+    const labels = Array.from({ length: binCount }, (_, index) => {
+      const start = index * binSize;
+      const end = start + binSize;
+      return `${start}-${end}m`;
+    });
+    const counts = new Array(binCount).fill(0);
+    values.forEach((value) => {
+      const index = Math.min(Math.floor(value / binSize), binCount - 1);
+      counts[index] += 1;
+    });
+    const cumulativeRelative = [];
+    counts.reduce((sum, count, index) => {
+      const nextSum = sum + count;
+      cumulativeRelative[index] = Number(((nextSum / values.length) * 100).toFixed(1));
       return nextSum;
     }, 0);
     chart.data.labels = labels;
