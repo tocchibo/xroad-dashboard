@@ -1130,6 +1130,132 @@ img {
   flex: 1 1 auto;
 }
 
+.detail-modal-content {
+  width: min(1320px, 96vw);
+  max-height: calc(100vh - 2rem);
+}
+
+.detail-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem 1rem;
+}
+
+.detail-search {
+  min-width: min(360px, 100%);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  padding: 0.35rem 0.6rem;
+  background: #fff;
+}
+
+.detail-search:disabled {
+  background: #f3f4f6;
+  color: #9ca3af;
+}
+
+.detail-summary {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.detail-table-wrap {
+  border: 1px solid var(--border);
+  border-radius: 0.85rem;
+  overflow: auto;
+  max-height: 520px;
+  background: #fff;
+}
+
+.detail-table {
+  width: 100%;
+  min-width: 1200px;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.84rem;
+}
+
+.detail-table thead th {
+  position: sticky;
+  top: 0;
+  background: #f8faff;
+  color: #334155;
+  text-align: left;
+  padding: 0.55rem 0.65rem;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  z-index: 1;
+}
+
+.detail-sort-button {
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.detail-sort-button:disabled {
+  cursor: default;
+}
+
+.detail-sort-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 0.2rem;
+}
+
+.detail-table tbody td {
+  padding: 0.5rem 0.65rem;
+  border-bottom: 1px solid #edf1f7;
+  vertical-align: top;
+  word-break: break-word;
+}
+
+.detail-table tbody tr:nth-child(even) {
+  background: #fcfdff;
+}
+
+.detail-empty {
+  margin: 0.15rem 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.detail-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.detail-page {
+  min-width: 4.4rem;
+  text-align: center;
+  font-weight: 600;
+  color: #334155;
+}
+
+@media (max-width: 720px) {
+  .detail-toolbar {
+    align-items: stretch;
+  }
+
+  .detail-summary {
+    flex-basis: 100%;
+  }
+
+  .detail-pagination {
+    justify-content: space-between;
+  }
+}
+
 .map-panel {
   display: flex;
   flex-direction: column;

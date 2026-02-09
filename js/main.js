@@ -106,6 +106,8 @@ const PC_POST_SEGMENTS = [
   const MAP_MARKER_MAX_DELTA = 50;
   const MAP_MARKER_BASE_SIZE = 22;
   const MAP_MARKER_MIN_SIZE = 6;
+  const DETAIL_PAGE_SIZE_DEFAULT = 100;
+  const DETAIL_PAGE_SIZE_OPTIONS = [50, 100, 200, 500];
   const BASE_LAYER_CONFIG = {
     standard: {
       label: "OpenStreetMap",
@@ -202,6 +204,17 @@ const PC_POST_SEGMENTS = [
     },
     pcFilterExpanded: false,
     filterDrawerOpen: false,
+    detailView: {
+      active: false,
+      sourceTitle: "",
+      bucketLabel: "",
+      records: [],
+      searchQuery: "",
+      page: 1,
+      pageSize: DETAIL_PAGE_SIZE_DEFAULT,
+      sortKey: null,
+      sortDirection: "asc",
+    },
   };
 
   const elements = {
@@ -291,6 +304,21 @@ const PC_POST_SEGMENTS = [
     filterInfoModal: document.querySelector("[data-filter-info-modal]"),
     filterInfoClose: document.querySelector("[data-filter-info-close]"),
     filterInfoBackdrop: document.querySelector("[data-filter-info-backdrop]"),
+    detailSelection: document.querySelector("[data-detail-selection]"),
+    detailClear: document.querySelector("[data-detail-clear]"),
+    detailSearch: document.querySelector("[data-detail-search]"),
+    detailPageSize: document.querySelector("[data-detail-page-size]"),
+    detailCount: document.querySelector("[data-detail-count]"),
+    detailRange: document.querySelector("[data-detail-range]"),
+    detailPage: document.querySelector("[data-detail-page]"),
+    detailPrev: document.querySelector("[data-detail-prev]"),
+    detailNext: document.querySelector("[data-detail-next]"),
+    detailBody: document.querySelector("[data-detail-body]"),
+    detailEmpty: document.querySelector("[data-detail-empty]"),
+    detailSortButtons: Array.from(document.querySelectorAll("[data-detail-sort-key]")),
+    detailModal: document.querySelector("[data-detail-modal]"),
+    detailBackdrop: document.querySelector("[data-detail-backdrop]"),
+    detailClose: document.querySelector("[data-detail-close]"),
   };
 
   const RANGE_FILTER_CONFIGS = {
@@ -345,6 +373,7 @@ const PC_POST_SEGMENTS = [
   };
 
   let filterInfoLastFocus = null;
+  let detailModalLastFocus = null;
 
   init();
 
@@ -363,11 +392,13 @@ const PC_POST_SEGMENTS = [
     bindDropzone();
     bindLogClear();
     initFilterInfoModal();
+    initDetailView();
     initCharts();
     initMap();
     rebuildDynamicFilters();
     renderUploadFeedback();
     renderLogs();
+    renderDetailView();
     if (!window.Papa) addLog("Papa Parse の読み込みに失敗しました。", "error");
     if (!window.Chart) addLog("Chart.js が利用できません。", "error");
     if (!window.L) addLog("Leaflet が利用できません。", "error");
@@ -1354,6 +1385,402 @@ const PC_POST_SEGMENTS = [
     }
   }
 
+  function openDetailModal() {
+    const modal = elements.detailModal;
+    const backdrop = elements.detailBackdrop;
+    if (!modal || !backdrop) return;
+    detailModalLastFocus = document.activeElement;
+    modal.hidden = false;
+    backdrop.hidden = false;
+    modal.classList.add("is-active");
+    backdrop.classList.add("is-active");
+    modal.setAttribute("aria-hidden", "false");
+    elements.detailClose?.focus();
+    document.addEventListener("keydown", handleDetailModalKeydown);
+  }
+
+  function closeDetailModal(options = {}) {
+    const { restoreFocus = true } = options;
+    const modal = elements.detailModal;
+    const backdrop = elements.detailBackdrop;
+    if (!modal || !backdrop) return;
+    modal.classList.remove("is-active");
+    backdrop.classList.remove("is-active");
+    modal.setAttribute("aria-hidden", "true");
+    modal.hidden = true;
+    backdrop.hidden = true;
+    document.removeEventListener("keydown", handleDetailModalKeydown);
+    if (restoreFocus && detailModalLastFocus && typeof detailModalLastFocus.focus === "function") {
+      try {
+        detailModalLastFocus.focus();
+      } catch (_) {
+        // ignore focus errors
+      }
+    }
+  }
+
+  function handleDetailModalKeydown(event) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      clearDetailView({ preservePageSize: true, closeModal: true });
+    }
+  }
+
+  function initDetailView() {
+    elements.detailClose?.addEventListener("click", () => {
+      clearDetailView({ preservePageSize: true, closeModal: true });
+    });
+    elements.detailBackdrop?.addEventListener("click", () => {
+      clearDetailView({ preservePageSize: true, closeModal: true });
+    });
+    elements.detailSortButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const sortKey = button.dataset.detailSortKey || null;
+        if (!sortKey) return;
+        handleDetailSortToggle(sortKey);
+      });
+    });
+    const pageSizeSelect = elements.detailPageSize;
+    if (pageSizeSelect) {
+      if (!pageSizeSelect.options.length) {
+        DETAIL_PAGE_SIZE_OPTIONS.forEach((size) => {
+          const option = document.createElement("option");
+          option.value = String(size);
+          option.textContent = `${size}件`;
+          pageSizeSelect.appendChild(option);
+        });
+      }
+      pageSizeSelect.value = String(state.detailView.pageSize);
+      pageSizeSelect.addEventListener("change", () => {
+        const value = Number.parseInt(pageSizeSelect.value, 10);
+        if (!Number.isFinite(value) || value <= 0) return;
+        state.detailView.pageSize = value;
+        state.detailView.page = 1;
+        renderDetailView();
+      });
+    }
+    elements.detailSearch?.addEventListener("input", () => {
+      state.detailView.searchQuery = elements.detailSearch?.value?.trim() ?? "";
+      state.detailView.page = 1;
+      renderDetailView();
+    });
+    elements.detailClear?.addEventListener("click", () => {
+      clearDetailView({ preservePageSize: true, closeModal: true });
+    });
+    elements.detailPrev?.addEventListener("click", () => {
+      if (state.detailView.page <= 1) return;
+      state.detailView.page -= 1;
+      renderDetailView();
+    });
+    elements.detailNext?.addEventListener("click", () => {
+      state.detailView.page += 1;
+      renderDetailView();
+    });
+  }
+
+  function clearDetailView(options = {}) {
+    const {
+      preservePageSize = true,
+      skipRender = false,
+      closeModal = true,
+      restoreFocus = true,
+      preserveSort = true,
+    } = options;
+    const nextPageSize = preservePageSize
+      ? state.detailView.pageSize || DETAIL_PAGE_SIZE_DEFAULT
+      : DETAIL_PAGE_SIZE_DEFAULT;
+    const nextSortKey = preserveSort ? state.detailView.sortKey : null;
+    const nextSortDirection = preserveSort ? state.detailView.sortDirection || "asc" : "asc";
+    state.detailView = {
+      active: false,
+      sourceTitle: "",
+      bucketLabel: "",
+      records: [],
+      searchQuery: "",
+      page: 1,
+      pageSize: nextPageSize,
+      sortKey: nextSortKey,
+      sortDirection: nextSortDirection,
+    };
+    if (elements.detailSearch) {
+      elements.detailSearch.value = "";
+    }
+    if (elements.detailPageSize) {
+      elements.detailPageSize.value = String(nextPageSize);
+    }
+    if (closeModal) {
+      closeDetailModal({ restoreFocus });
+    }
+    if (!skipRender) {
+      renderDetailView();
+    }
+  }
+
+  function openDetailViewFromChart({ sourceTitle, bucketLabel, records }) {
+    const pageSize = state.detailView.pageSize || DETAIL_PAGE_SIZE_DEFAULT;
+    const sortKey = state.detailView.sortKey || null;
+    const sortDirection = state.detailView.sortDirection || "asc";
+    state.detailView = {
+      active: true,
+      sourceTitle: sourceTitle || "グラフ",
+      bucketLabel: bucketLabel || "対象",
+      records: Array.isArray(records) ? records.slice() : [],
+      searchQuery: "",
+      page: 1,
+      pageSize,
+      sortKey,
+      sortDirection,
+    };
+    if (elements.detailSearch) {
+      elements.detailSearch.value = "";
+    }
+    if (elements.detailPageSize) {
+      elements.detailPageSize.value = String(pageSize);
+    }
+    renderDetailView();
+    openDetailModal();
+  }
+
+  function renderDetailView() {
+    const { active, sourceTitle, bucketLabel, records, searchQuery } = state.detailView;
+    const pageSize = Math.max(1, state.detailView.pageSize || DETAIL_PAGE_SIZE_DEFAULT);
+    if (elements.detailPageSize && elements.detailPageSize.value !== String(pageSize)) {
+      elements.detailPageSize.value = String(pageSize);
+    }
+    if (elements.detailSearch) {
+      elements.detailSearch.disabled = !active;
+    }
+    if (elements.detailPageSize) {
+      elements.detailPageSize.disabled = !active;
+    }
+    if (elements.detailClear) {
+      elements.detailClear.disabled = !active;
+    }
+    updateDetailSortButtons(active);
+    if (!active) {
+      setText(elements.detailSelection, "グラフの棒や区分をクリックすると、該当橋梁を一覧表示します。");
+      setText(elements.detailCount, "0");
+      setText(elements.detailRange, "0-0 / 0");
+      setText(elements.detailPage, "0 / 0");
+      if (elements.detailPrev) elements.detailPrev.disabled = true;
+      if (elements.detailNext) elements.detailNext.disabled = true;
+      if (elements.detailBody) elements.detailBody.innerHTML = "";
+      if (elements.detailEmpty) {
+        elements.detailEmpty.hidden = false;
+        elements.detailEmpty.textContent = "グラフ要素を選択するとここに橋梁一覧が表示されます。";
+      }
+      return;
+    }
+
+    const datasetLabelMap = new Map(state.datasets.map((dataset) => [dataset.id, dataset.label]));
+    const filtered = filterDetailRecords(records, searchQuery, datasetLabelMap);
+    const sorted = sortDetailRecords(filtered, datasetLabelMap);
+    const total = sorted.length;
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    state.detailView.page = Math.min(Math.max(1, state.detailView.page), totalPages);
+    const pageStart = total ? (state.detailView.page - 1) * pageSize : 0;
+    const pageEnd = Math.min(pageStart + pageSize, total);
+    const pageRecords = sorted.slice(pageStart, pageEnd);
+
+    setText(elements.detailSelection, `${sourceTitle} / ${bucketLabel}`);
+    setText(elements.detailCount, formatNumber(total));
+    setText(
+      elements.detailRange,
+      total ? `${formatNumber(pageStart + 1)}-${formatNumber(pageEnd)} / ${formatNumber(total)}` : "0-0 / 0"
+    );
+    setText(elements.detailPage, `${state.detailView.page} / ${totalPages}`);
+    if (elements.detailPrev) elements.detailPrev.disabled = state.detailView.page <= 1 || total === 0;
+    if (elements.detailNext) elements.detailNext.disabled = state.detailView.page >= totalPages || total === 0;
+
+    if (elements.detailBody) {
+      elements.detailBody.innerHTML = "";
+      const fragment = document.createDocumentFragment();
+      pageRecords.forEach((record, index) => {
+        fragment.appendChild(createDetailRow(record, pageStart + index + 1, datasetLabelMap));
+      });
+      elements.detailBody.appendChild(fragment);
+    }
+    if (elements.detailEmpty) {
+      elements.detailEmpty.hidden = pageRecords.length > 0;
+      if (!pageRecords.length) {
+        elements.detailEmpty.textContent = searchQuery
+          ? "検索条件に一致する橋梁はありません。"
+          : "選択条件に一致する橋梁はありません。";
+      }
+    }
+  }
+
+  function handleDetailSortToggle(sortKey) {
+    if (!sortKey) return;
+    if (state.detailView.sortKey === sortKey) {
+      state.detailView.sortDirection = state.detailView.sortDirection === "asc" ? "desc" : "asc";
+    } else {
+      state.detailView.sortKey = sortKey;
+      state.detailView.sortDirection = "asc";
+    }
+    state.detailView.page = 1;
+    renderDetailView();
+  }
+
+  function updateDetailSortButtons(active) {
+    elements.detailSortButtons.forEach((button) => {
+      const sortKey = button.dataset.detailSortKey || "";
+      const label = button.dataset.sortLabel || button.textContent || "";
+      const isActive = Boolean(active && sortKey && state.detailView.sortKey === sortKey);
+      const direction = isActive ? state.detailView.sortDirection : null;
+      const indicator = direction === "asc" ? " ▲" : direction === "desc" ? " ▼" : " ↕";
+      button.textContent = `${label}${indicator}`;
+      button.disabled = !active;
+      button.setAttribute("aria-pressed", String(isActive));
+      const parentHeader = button.closest("th");
+      if (parentHeader) {
+        parentHeader.setAttribute("aria-sort", isActive ? (direction === "asc" ? "ascending" : "descending") : "none");
+      }
+    });
+  }
+
+  function sortDetailRecords(records, datasetLabelMap) {
+    const { sortKey, sortDirection } = state.detailView;
+    if (!sortKey) return records;
+    const direction = sortDirection === "desc" ? -1 : 1;
+    const sortable = records.map((record, index) => ({ record, index }));
+    sortable.sort((a, b) => {
+      const compared = compareDetailRecords(a.record, b.record, sortKey, datasetLabelMap);
+      if (compared !== 0) return compared * direction;
+      return a.index - b.index;
+    });
+    return sortable.map((entry) => entry.record);
+  }
+
+  function compareDetailRecords(a, b, sortKey, datasetLabelMap) {
+    switch (sortKey) {
+      case "datasetLabel":
+        return compareDetailText(
+          datasetLabelMap.get(a.datasetId) || a.datasetLabel || a.datasetId,
+          datasetLabelMap.get(b.datasetId) || b.datasetLabel || b.datasetId
+        );
+      case "facilityName":
+        return compareDetailText(a.facilityName, b.facilityName);
+      case "routeName":
+        return compareDetailText(a.routeName, b.routeName);
+      case "bridgeType":
+        return compareDetailText(a.bridgeType, b.bridgeType);
+      case "inspectionLevel":
+        return getInspectionSortRank(a.inspectionLevel) - getInspectionSortRank(b.inspectionLevel);
+      case "builtYear":
+        return compareDetailNumbers(a.builtYear, b.builtYear);
+      case "bridgeLengthM":
+        return compareDetailNumbers(a.bridgeLengthM, b.bridgeLengthM);
+      case "spans":
+        return compareDetailNumbers(a.spans, b.spans);
+      case "spanLengthM":
+        return compareDetailNumbers(a.spanLengthM, b.spanLengthM);
+      case "specYear":
+        return getSpecYearSortRank(a) - getSpecYearSortRank(b);
+      case "managementOffice":
+        return compareDetailText(getManagementOfficeLabel(a), getManagementOfficeLabel(b));
+      case "municipality":
+        return compareDetailText(getMunicipalityLabel(a), getMunicipalityLabel(b));
+      default:
+        return 0;
+    }
+  }
+
+  function compareDetailNumbers(a, b) {
+    const aNum = Number.isFinite(a) ? a : null;
+    const bNum = Number.isFinite(b) ? b : null;
+    if (aNum === null && bNum === null) return 0;
+    if (aNum === null) return 1;
+    if (bNum === null) return -1;
+    return aNum - bNum;
+  }
+
+  function compareDetailText(a, b) {
+    const left = (a ?? "").toString();
+    const right = (b ?? "").toString();
+    return left.localeCompare(right, "ja-JP", { numeric: true, sensitivity: "base" });
+  }
+
+  function getInspectionSortRank(level) {
+    const index = INSPECTION_LEVELS.indexOf(level);
+    return index === -1 ? INSPECTION_LEVELS.length : index;
+  }
+
+  function getSpecYearSortRank(record) {
+    const value = getRecordSpecYearValue(record, state.filters.useSpecYearInference) || SPEC_YEAR_UNKNOWN;
+    const index = SPEC_YEAR_ORDER.indexOf(value);
+    return index === -1 ? SPEC_YEAR_ORDER.length : index;
+  }
+
+  function filterDetailRecords(records, searchQuery, datasetLabelMap) {
+    const normalizedQuery = normalizeForMatch(searchQuery || "");
+    if (!normalizedQuery) return records;
+    return records.filter((record) => {
+      const specYear = getRecordSpecYearValue(record, state.filters.useSpecYearInference) || SPEC_YEAR_UNKNOWN;
+      const candidates = [
+        datasetLabelMap.get(record.datasetId) || record.datasetLabel || record.datasetId,
+        record.facilityName,
+        record.routeName,
+        record.bridgeType,
+        getInspectionLabel(record.inspectionLevel),
+        getManagementOfficeLabel(record),
+        getMunicipalityLabel(record),
+        specYear,
+      ];
+      return candidates.some((value) => normalizeForMatch(value).includes(normalizedQuery));
+    });
+  }
+
+  function createDetailRow(record, rowNo, datasetLabelMap) {
+    const tr = document.createElement("tr");
+    const datasetLabel = datasetLabelMap.get(record.datasetId) || record.datasetLabel || record.datasetId;
+    const specYear = getRecordSpecYearValue(record, state.filters.useSpecYearInference) || SPEC_YEAR_UNKNOWN;
+    const builtYear = Number.isFinite(record.builtYear) ? String(Math.round(record.builtYear)) : "不明";
+    const bridgeLength = Number.isFinite(record.bridgeLengthM) ? record.bridgeLengthM.toFixed(1) : "-";
+    const spans = Number.isFinite(record.spans) ? String(Math.round(record.spans)) : "-";
+    const spanLength = Number.isFinite(record.spanLengthM) ? record.spanLengthM.toFixed(1) : "-";
+    const cells = [
+      String(rowNo),
+      datasetLabel,
+      record.facilityName,
+      record.routeName,
+      record.bridgeType,
+      getInspectionLabel(record.inspectionLevel),
+      builtYear,
+      bridgeLength,
+      spans,
+      spanLength,
+      specYear,
+      getManagementOfficeLabel(record),
+      getMunicipalityLabel(record),
+    ];
+    cells.forEach((value) => {
+      const td = document.createElement("td");
+      td.textContent = value ?? "";
+      tr.appendChild(td);
+    });
+    return tr;
+  }
+
+  function setChartDrilldownContext(chart, sourceTitle, resolver) {
+    if (!chart) return;
+    chart.$detailSourceTitle = sourceTitle;
+    chart.$detailResolver = typeof resolver === "function" ? resolver : null;
+  }
+
+  function handleChartElementClick(chart, activeElements) {
+    if (!chart || !Array.isArray(activeElements) || !activeElements.length) return;
+    if (typeof chart.$detailResolver !== "function") return;
+    const clicked = activeElements[0];
+    const resolved = chart.$detailResolver(clicked);
+    if (!resolved || !Array.isArray(resolved.records)) return;
+    openDetailViewFromChart({
+      sourceTitle: chart.$detailSourceTitle || "グラフ",
+      bucketLabel: resolved.bucketLabel || "対象",
+      records: resolved.records,
+    });
+  }
+
 
   function bindRangeControl() {
     const range = elements.lengthBinRange;
@@ -2015,11 +2442,16 @@ function resolvePcPostKey(value) {
     };
   }
 
-  function refreshAll() {
+  function refreshAll(options = {}) {
+    const { preserveDetailView = false } = options;
+    if (!preserveDetailView) {
+      clearDetailView({ preservePageSize: true, skipRender: true, restoreFocus: false });
+    }
     updateDatasetList();
     updateKpis();
     updateCharts();
     updateMap();
+    renderDetailView();
   }
 
   function updateDatasetList() {
@@ -2359,12 +2791,29 @@ function resolvePcPostKey(value) {
   function createChart(id, config) {
     const canvas = document.getElementById(id);
     if (!canvas || !window.Chart) return null;
+    const baseOptions = config.options || {};
+    const userOnClick = baseOptions.onClick;
+    const userOnHover = baseOptions.onHover;
     const mergedConfig = {
       ...config,
       options: {
         responsive: true,
-        ...(config.options || {}),
+        ...baseOptions,
         maintainAspectRatio: false,
+        onClick: (event, activeElements, chart) => {
+          if (typeof userOnClick === "function") {
+            userOnClick(event, activeElements, chart);
+          }
+          handleChartElementClick(chart, activeElements);
+        },
+        onHover: (event, activeElements, chart) => {
+          if (chart?.canvas) {
+            chart.canvas.style.cursor = Array.isArray(activeElements) && activeElements.length ? "pointer" : "default";
+          }
+          if (typeof userOnHover === "function") {
+            userOnHover(event, activeElements, chart);
+          }
+        },
       },
     };
     return new window.Chart(canvas.getContext("2d"), mergedConfig);
@@ -2378,36 +2827,57 @@ function resolvePcPostKey(value) {
     const labelText = stockMode === "count" ? "橋梁数" : "総延長 (km)";
     let labels = [];
     let values = [];
+    let buckets = [];
 
     if (stockScope === "dataset") {
       const datasetMap = new Map();
       state.datasets
         .filter((dataset) => dataset.active)
-        .forEach((dataset) => datasetMap.set(dataset.id, { label: dataset.label, value: 0 }));
+        .forEach((dataset) => datasetMap.set(dataset.id, { label: dataset.label, value: 0, records: [] }));
       records.forEach((record) => {
         const entry = datasetMap.get(record.datasetId);
         if (!entry) return;
         entry.value += stockMode === "count" ? 1 : (record.bridgeLengthM || 0) / 1000;
+        entry.records.push(record);
       });
-      labels = Array.from(datasetMap.values()).map((entry) => entry.label);
-      values = Array.from(datasetMap.values()).map((entry) =>
+      const entries = Array.from(datasetMap.values());
+      labels = entries.map((entry) => entry.label);
+      values = entries.map((entry) =>
         stockMode === "count" ? entry.value : Number(entry.value.toFixed(2))
       );
+      buckets = entries.map((entry) => ({
+        bucketLabel: entry.label,
+        records: entry.records,
+      }));
     } else {
       labels = BRIDGE_TYPES;
       const aggregated = BRIDGE_TYPES.map(() => 0);
+      const recordBuckets = BRIDGE_TYPES.map(() => []);
       records.forEach((record) => {
         const index = BRIDGE_TYPES.indexOf(record.bridgeType);
         if (index === -1) return;
         aggregated[index] += stockMode === "count" ? 1 : (record.bridgeLengthM || 0) / 1000;
+        recordBuckets[index].push(record);
       });
       values = aggregated.map((value) => (stockMode === "count" ? value : Number(value.toFixed(2))));
+      buckets = BRIDGE_TYPES.map((type, index) => ({
+        bucketLabel: type,
+        records: recordBuckets[index],
+      }));
     }
 
     chart.data.labels = labels;
     chart.data.datasets[0].data = values;
     chart.data.datasets[0].label = labelText;
     chart.options.scales.y.title = { display: true, text: stockMode === "count" ? "橋梁数" : "総延長 (km)" };
+    setChartDrilldownContext(chart, "橋種別ストック構成", ({ index }) => {
+      const bucket = buckets[index];
+      if (!bucket) return null;
+      return {
+        bucketLabel: bucket.bucketLabel,
+        records: bucket.records,
+      };
+    });
     chart.update();
   }
 
@@ -2415,14 +2885,30 @@ function resolvePcPostKey(value) {
     const chart = state.charts.rating;
     if (!chart) return;
     const records = getFilteredRecords();
+    const countsByType = BRIDGE_TYPES.map(() => INSPECTION_LEVELS.map(() => 0));
+    const recordBuckets = BRIDGE_TYPES.map(() => INSPECTION_LEVELS.map(() => []));
+    records.forEach((record) => {
+      const typeIndex = BRIDGE_TYPES.indexOf(record.bridgeType);
+      const levelIndex = INSPECTION_LEVELS.indexOf(record.inspectionLevel);
+      if (typeIndex === -1 || levelIndex === -1) return;
+      countsByType[typeIndex][levelIndex] += 1;
+      recordBuckets[typeIndex][levelIndex].push(record);
+    });
     chart.data.labels = INSPECTION_LEVELS.map(getInspectionLabel);
-    chart.data.datasets = BRIDGE_TYPES.map((type) => ({
+    chart.data.datasets = BRIDGE_TYPES.map((type, typeIndex) => ({
       label: type,
-      data: INSPECTION_LEVELS.map((level) =>
-        records.filter((record) => record.bridgeType === type && record.inspectionLevel === level).length
-      ),
+      data: INSPECTION_LEVELS.map((_, levelIndex) => countsByType[typeIndex][levelIndex]),
       backgroundColor: BRIDGE_TYPE_COLOR_MAP[type],
     }));
+    setChartDrilldownContext(chart, "点検判定区分の分布", ({ index, datasetIndex }) => {
+      const type = BRIDGE_TYPES[datasetIndex];
+      const level = INSPECTION_LEVELS[index];
+      if (!type || !level) return null;
+      return {
+        bucketLabel: `${type} × ${getInspectionLabel(level)}`,
+        records: recordBuckets[datasetIndex][index] || [],
+      };
+    });
     chart.update();
   }
 
@@ -2437,6 +2923,7 @@ function resolvePcPostKey(value) {
       chart.data.labels = [];
       lineDataset.data = [];
       barDataset.data = [];
+      setChartDrilldownContext(chart, "橋長階級ヒストグラム", null);
       chart.update();
       return;
     }
@@ -2449,9 +2936,11 @@ function resolvePcPostKey(value) {
       return `${start}-${end}m`;
     });
     const counts = new Array(binCount).fill(0);
+    const bucketRecords = Array.from({ length: binCount }, () => []);
     records.forEach((record) => {
       const index = Math.min(Math.floor(record.bridgeLengthM / binSize), binCount - 1);
       counts[index] += 1;
+      bucketRecords[index].push(record);
     });
     const cumulativeRelative = [];
     counts.reduce((sum, count, index) => {
@@ -2462,6 +2951,13 @@ function resolvePcPostKey(value) {
     chart.data.labels = labels;
     barDataset.data = counts;
     lineDataset.data = cumulativeRelative;
+    setChartDrilldownContext(chart, "橋長階級ヒストグラム", ({ index }) => {
+      if (!labels[index]) return null;
+      return {
+        bucketLabel: labels[index],
+        records: bucketRecords[index] || [],
+      };
+    });
     chart.update();
   }
 
@@ -2471,19 +2967,18 @@ function resolvePcPostKey(value) {
     const lineDataset = chart.data.datasets.find((dataset) => dataset.type === "line");
     const barDataset = chart.data.datasets.find((dataset) => dataset.type === "bar");
     if (!lineDataset || !barDataset) return;
-    const values = getFilteredRecords()
-      .map((record) => record.spans)
-      .filter((value) => Number.isFinite(value));
-    if (!values.length) {
+    const records = getFilteredRecords().filter((record) => Number.isFinite(record.spans));
+    if (!records.length) {
       chart.data.labels = [];
       lineDataset.data = [];
       barDataset.data = [];
+      setChartDrilldownContext(chart, "径間数ヒストグラム", null);
       chart.update();
       return;
     }
     const binSize = SPAN_COUNT_BIN_SIZE;
-    const minValue = Math.min(...values);
-    const maxValue = Math.max(...values);
+    const minValue = Math.min(...records.map((record) => record.spans));
+    const maxValue = Math.max(...records.map((record) => record.spans));
     const start = Math.floor(minValue);
     const binCount = Math.max(1, Math.ceil((maxValue - start) / binSize));
     const labels = Array.from({ length: binCount }, (_, index) => {
@@ -2492,20 +2987,29 @@ function resolvePcPostKey(value) {
       return `${rangeStart}-${rangeEnd}径間`;
     });
     const counts = new Array(binCount).fill(0);
-    values.forEach((value) => {
-      const index = Math.min(Math.floor((value - start) / binSize), binCount - 1);
+    const bucketRecords = Array.from({ length: binCount }, () => []);
+    records.forEach((record) => {
+      const index = Math.min(Math.floor((record.spans - start) / binSize), binCount - 1);
       if (index < 0) return;
       counts[index] += 1;
+      bucketRecords[index].push(record);
     });
     const cumulativeRelative = [];
     counts.reduce((sum, count, index) => {
       const nextSum = sum + count;
-      cumulativeRelative[index] = Number(((nextSum / values.length) * 100).toFixed(1));
+      cumulativeRelative[index] = Number(((nextSum / records.length) * 100).toFixed(1));
       return nextSum;
     }, 0);
     chart.data.labels = labels;
     barDataset.data = counts;
     lineDataset.data = cumulativeRelative;
+    setChartDrilldownContext(chart, "径間数ヒストグラム", ({ index }) => {
+      if (!labels[index]) return null;
+      return {
+        bucketLabel: labels[index],
+        records: bucketRecords[index] || [],
+      };
+    });
     chart.update();
   }
 
@@ -2515,18 +3019,17 @@ function resolvePcPostKey(value) {
     const lineDataset = chart.data.datasets.find((dataset) => dataset.type === "line");
     const barDataset = chart.data.datasets.find((dataset) => dataset.type === "bar");
     if (!lineDataset || !barDataset) return;
-    const values = getFilteredRecords()
-      .map((record) => record.spanLengthM)
-      .filter((value) => Number.isFinite(value));
-    if (!values.length) {
+    const records = getFilteredRecords().filter((record) => Number.isFinite(record.spanLengthM));
+    if (!records.length) {
       chart.data.labels = [];
       lineDataset.data = [];
       barDataset.data = [];
+      setChartDrilldownContext(chart, "径間長ヒストグラム", null);
       chart.update();
       return;
     }
     const binSize = SPAN_LENGTH_BIN_SIZE;
-    const maxValue = Math.max(...values);
+    const maxValue = Math.max(...records.map((record) => record.spanLengthM));
     const binCount = Math.max(1, Math.ceil(maxValue / binSize));
     const labels = Array.from({ length: binCount }, (_, index) => {
       const start = index * binSize;
@@ -2534,19 +3037,28 @@ function resolvePcPostKey(value) {
       return `${start}-${end}m`;
     });
     const counts = new Array(binCount).fill(0);
-    values.forEach((value) => {
-      const index = Math.min(Math.floor(value / binSize), binCount - 1);
+    const bucketRecords = Array.from({ length: binCount }, () => []);
+    records.forEach((record) => {
+      const index = Math.min(Math.floor(record.spanLengthM / binSize), binCount - 1);
       counts[index] += 1;
+      bucketRecords[index].push(record);
     });
     const cumulativeRelative = [];
     counts.reduce((sum, count, index) => {
       const nextSum = sum + count;
-      cumulativeRelative[index] = Number(((nextSum / values.length) * 100).toFixed(1));
+      cumulativeRelative[index] = Number(((nextSum / records.length) * 100).toFixed(1));
       return nextSum;
     }, 0);
     chart.data.labels = labels;
     barDataset.data = counts;
     lineDataset.data = cumulativeRelative;
+    setChartDrilldownContext(chart, "径間長ヒストグラム", ({ index }) => {
+      if (!labels[index]) return null;
+      return {
+        bucketLabel: labels[index],
+        records: bucketRecords[index] || [],
+      };
+    });
     chart.update();
   }
 
@@ -2557,6 +3069,7 @@ function resolvePcPostKey(value) {
     if (!records.length) {
       chart.data.labels = [];
       chart.data.datasets = [];
+      setChartDrilldownContext(chart, "架設年度分布", null);
       chart.update();
       return;
     }
@@ -2569,9 +3082,14 @@ function resolvePcPostKey(value) {
         bucketMap.set(bucketKey, {
           label,
           counts: BRIDGE_TYPES.reduce((acc, type) => ({ ...acc, [type]: 0 }), {}),
+          recordsByType: BRIDGE_TYPES.reduce((acc, type) => ({ ...acc, [type]: [] }), {}),
+          allRecords: [],
         });
       }
-      bucketMap.get(bucketKey).counts[record.bridgeType] += 1;
+      const bucket = bucketMap.get(bucketKey);
+      bucket.counts[record.bridgeType] += 1;
+      bucket.recordsByType[record.bridgeType].push(record);
+      bucket.allRecords.push(record);
     });
     const sortedKeys = Array.from(bucketMap.keys()).sort((a, b) => a - b);
     chart.data.labels = sortedKeys.map((key) => bucketMap.get(key).label);
@@ -2605,6 +3123,24 @@ function resolvePcPostKey(value) {
       fill: false,
     };
     chart.data.datasets = [cumulativeDataset, ...stackedDatasets];
+    setChartDrilldownContext(chart, "架設年度分布", ({ index, datasetIndex }) => {
+      const bucketKey = sortedKeys[index];
+      if (bucketKey === undefined) return null;
+      const bucket = bucketMap.get(bucketKey);
+      if (!bucket) return null;
+      if (datasetIndex === 0) {
+        return {
+          bucketLabel: `${bucket.label}（全橋種）`,
+          records: bucket.allRecords,
+        };
+      }
+      const type = BRIDGE_TYPES[datasetIndex - 1];
+      if (!type) return null;
+      return {
+        bucketLabel: `${bucket.label} × ${type}`,
+        records: bucket.recordsByType[type] || [],
+      };
+    });
     chart.update();
   }
 
@@ -2617,16 +3153,31 @@ function resolvePcPostKey(value) {
       ポステン: 0,
       不明: 0,
     };
+    const recordBuckets = {
+      プレテン: [],
+      ポステン: [],
+      不明: [],
+    };
     records.forEach((record) => {
       const key = record.pcTensionType;
       if (key && counts[key] !== undefined) {
         counts[key] += 1;
+        recordBuckets[key].push(record);
       } else {
         counts.不明 += 1;
+        recordBuckets.不明.push(record);
       }
     });
     chart.data.labels = PC_TENSION_SEGMENTS.map((segment) => segment.label);
     chart.data.datasets[0].data = PC_TENSION_SEGMENTS.map((segment) => counts[segment.key]);
+    setChartDrilldownContext(chart, "PC橋の張力方式別構成", ({ index }) => {
+      const segment = PC_TENSION_SEGMENTS[index];
+      if (!segment) return null;
+      return {
+        bucketLabel: segment.label,
+        records: recordBuckets[segment.key] || [],
+      };
+    });
     chart.update();
   }
 
@@ -2637,15 +3188,25 @@ function resolvePcPostKey(value) {
       (record) => record.bridgeType === "PC橋" && record.pcTensionType === "ポステン"
     );
     const counts = Object.fromEntries(PC_POST_SEGMENTS.map((segment) => [segment.key, 0]));
+    const recordBuckets = Object.fromEntries(PC_POST_SEGMENTS.map((segment) => [segment.key, []]));
     records.forEach((record) => {
       const key =
         record.pcPostCategory && counts[record.pcPostCategory] !== undefined
           ? record.pcPostCategory
           : "その他";
       counts[key] += 1;
+      recordBuckets[key].push(record);
     });
     chart.data.labels = PC_POST_SEGMENTS.map((segment) => segment.label);
     chart.data.datasets[0].data = PC_POST_SEGMENTS.map((segment) => counts[segment.key]);
+    setChartDrilldownContext(chart, "ポステンPC橋の形式内訳", ({ index }) => {
+      const segment = PC_POST_SEGMENTS[index];
+      if (!segment) return null;
+      return {
+        bucketLabel: segment.label,
+        records: recordBuckets[segment.key] || [],
+      };
+    });
     chart.update();
   }
 

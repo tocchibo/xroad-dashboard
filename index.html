@@ -2203,6 +2203,7 @@
       </aside>
       <div class="filter-drawer-backdrop" data-filter-drawer-backdrop hidden></div>
       <div class="modal-backdrop" data-filter-info-backdrop hidden></div>
+      <div class="modal-backdrop" data-detail-backdrop hidden></div>
       <section
         class="modal filter-info-modal"
         data-filter-info-modal
@@ -2409,6 +2410,84 @@
                 <dd>dataset カードのスイッチで ON/OFF を切り替え。OFF にした dataset のレコードは集計・地図・フィルタ・カルバート判定など全ての処理から除外されます。</dd>
               </dl>
             </section>
+          </div>
+        </div>
+      </section>
+      <section
+        class="modal detail-modal"
+        data-detail-modal
+        aria-hidden="true"
+        role="dialog"
+        aria-labelledby="detail-modal-title"
+        hidden
+      >
+        <div class="modal-content detail-modal-content">
+          <header class="modal-header">
+            <div>
+              <p class="eyebrow">グラフ連動</p>
+              <h2 id="detail-modal-title">選択したグラフ要素の橋梁一覧</h2>
+              <p class="panel-description" data-detail-selection>
+                グラフの棒や区分をクリックすると、該当橋梁を一覧表示します。
+              </p>
+            </div>
+            <button type="button" class="modal-close" data-detail-close aria-label="一覧を閉じる">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </header>
+          <div class="detail-toolbar" aria-label="橋梁一覧の操作">
+            <label class="select-label" for="detail-search">
+              検索
+              <input
+                id="detail-search"
+                class="detail-search"
+                type="search"
+                data-detail-search
+                placeholder="施設名・路線名・管理事務所・市区町村"
+                disabled
+              />
+            </label>
+            <label class="select-label" for="detail-page-size">
+              1ページ表示件数
+              <select id="detail-page-size" data-detail-page-size disabled>
+                <option value="50">50件</option>
+                <option value="100" selected>100件</option>
+                <option value="200">200件</option>
+                <option value="500">500件</option>
+              </select>
+            </label>
+            <button type="button" class="ghost-link" data-detail-clear disabled>選択解除</button>
+            <p class="detail-summary">
+              該当件数: <strong data-detail-count>0</strong> 件 /
+              表示範囲: <span data-detail-range>0-0 / 0</span>
+            </p>
+          </div>
+          <div class="detail-table-wrap">
+            <table class="detail-table">
+              <thead data-detail-head>
+                <tr>
+                  <th scope="col">No</th>
+                  <th scope="col"><button type="button" class="detail-sort-button" data-detail-sort-key="datasetLabel" data-sort-label="系列名">系列名</button></th>
+                  <th scope="col"><button type="button" class="detail-sort-button" data-detail-sort-key="facilityName" data-sort-label="施設名">施設名</button></th>
+                  <th scope="col"><button type="button" class="detail-sort-button" data-detail-sort-key="routeName" data-sort-label="路線名">路線名</button></th>
+                  <th scope="col"><button type="button" class="detail-sort-button" data-detail-sort-key="bridgeType" data-sort-label="橋種">橋種</button></th>
+                  <th scope="col"><button type="button" class="detail-sort-button" data-detail-sort-key="inspectionLevel" data-sort-label="判定">判定</button></th>
+                  <th scope="col"><button type="button" class="detail-sort-button" data-detail-sort-key="builtYear" data-sort-label="架設年">架設年</button></th>
+                  <th scope="col"><button type="button" class="detail-sort-button" data-detail-sort-key="bridgeLengthM" data-sort-label="橋長(m)">橋長(m)</button></th>
+                  <th scope="col"><button type="button" class="detail-sort-button" data-detail-sort-key="spans" data-sort-label="径間数">径間数</button></th>
+                  <th scope="col"><button type="button" class="detail-sort-button" data-detail-sort-key="spanLengthM" data-sort-label="径間長(m)">径間長(m)</button></th>
+                  <th scope="col"><button type="button" class="detail-sort-button" data-detail-sort-key="specYear" data-sort-label="示方書年度">示方書年度</button></th>
+                  <th scope="col"><button type="button" class="detail-sort-button" data-detail-sort-key="managementOffice" data-sort-label="管理事務所">管理事務所</button></th>
+                  <th scope="col"><button type="button" class="detail-sort-button" data-detail-sort-key="municipality" data-sort-label="市区町村">市区町村</button></th>
+                </tr>
+              </thead>
+              <tbody data-detail-body></tbody>
+            </table>
+          </div>
+          <p class="detail-empty" data-detail-empty>グラフ要素を選択するとここに橋梁一覧が表示されます。</p>
+          <div class="detail-pagination">
+            <button type="button" class="filter-action" data-detail-prev disabled>前へ</button>
+            <span class="detail-page" data-detail-page>0 / 0</span>
+            <button type="button" class="filter-action" data-detail-next disabled>次へ</button>
           </div>
         </div>
       </section>
