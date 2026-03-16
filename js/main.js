@@ -215,11 +215,13 @@ const PC_POST_SEGMENTS = [
       sortKey: null,
       sortDirection: "asc",
     },
+    datasetCardShowFilteredStats: false,
   };
 
   const elements = {
     datasetList: document.querySelector("[data-dataset-list]"),
     datasetEmpty: document.querySelector("[data-dataset-empty]"),
+    datasetStatsToggle: document.querySelector("[data-dataset-stats-toggle]"),
     datasetToggleList: document.querySelector("[data-dataset-toggle-list]"),
     datasetToggleEmpty: document.querySelector("[data-dataset-toggle-empty]"),
     dropzone: document.querySelector("[data-dropzone]"),
@@ -385,6 +387,7 @@ const PC_POST_SEGMENTS = [
     bindRangeControl();
     bindSelectControls();
     bindCulvertFilter();
+    bindDatasetCardStatsToggle();
     bindAdvancedFilters();
     bindMapControls();
     bindClusterControls();
@@ -1889,6 +1892,17 @@ const PC_POST_SEGMENTS = [
     });
   }
 
+  function bindDatasetCardStatsToggle() {
+    const checkbox = elements.datasetStatsToggle;
+    if (!checkbox) return;
+    checkbox.checked = state.datasetCardShowFilteredStats;
+    checkbox.disabled = state.datasets.length === 0;
+    checkbox.addEventListener("change", (event) => {
+      state.datasetCardShowFilteredStats = Boolean(event.currentTarget.checked);
+      updateDatasetList();
+    });
+  }
+
   function bindAdvancedFilters() {
     bindSpecYearInferenceToggle();
     bindBuiltYearUnknownToggle();
@@ -2456,21 +2470,54 @@ function resolvePcPostKey(value) {
 
   function updateDatasetList() {
     const hasDatasets = state.datasets.length > 0;
+    const cardStatsMap = getDatasetCardStatsMap();
     if (elements.datasetEmpty) {
       elements.datasetEmpty.hidden = hasDatasets;
+    }
+    if (elements.datasetStatsToggle) {
+      elements.datasetStatsToggle.disabled = !hasDatasets;
     }
     if (elements.datasetList) {
       elements.datasetList.innerHTML = "";
       if (hasDatasets) {
         state.datasets.forEach((dataset) => {
-          elements.datasetList.appendChild(createDatasetCard(dataset));
+          const stats = cardStatsMap.get(dataset.id);
+          elements.datasetList.appendChild(createDatasetCard(dataset, stats));
         });
       }
     }
   }
 
+  function getDatasetCardStatsMap() {
+    const statsMap = new Map();
+    if (!state.datasetCardShowFilteredStats) {
+      state.datasets.forEach((dataset) => {
+        statsMap.set(dataset.id, {
+          bridgeCount: dataset.stats.bridgeCount,
+          flagged: dataset.stats.flagged,
+        });
+      });
+      return statsMap;
+    }
 
-  function createDatasetCard(dataset) {
+    const passesFilters = createRecordFilterPredicate();
+    state.datasets.forEach((dataset) => {
+      let bridgeCount = 0;
+      let flagged = 0;
+      dataset.records.forEach((record) => {
+        if (!passesFilters(record)) return;
+        bridgeCount += 1;
+        if (record.inspectionLevel === "III" || record.inspectionLevel === "IV") {
+          flagged += 1;
+        }
+      });
+      statsMap.set(dataset.id, { bridgeCount, flagged });
+    });
+    return statsMap;
+  }
+
+
+  function createDatasetCard(dataset, stats) {
     const item = document.createElement("li");
     item.className = "dataset-item";
     if (!dataset.active) item.classList.add("is-muted");
@@ -2514,14 +2561,13 @@ function resolvePcPostKey(value) {
 
     const summary = document.createElement("div");
     summary.className = "dataset-summary";
-    const bridgeCountStat = createDatasetStat("橋梁数", formatNumber(dataset.stats.bridgeCount));
-    const flaggedRate = dataset.stats.bridgeCount ? dataset.stats.flagged / dataset.stats.bridgeCount : 0;
+    const bridgeCountStat = createDatasetStat("橋梁数", formatNumber(stats.bridgeCount));
+    const flaggedRate = stats.bridgeCount ? stats.flagged / stats.bridgeCount : 0;
     const flaggedStat = createDatasetStat(
       "III/IV",
-      `${formatNumber(dataset.stats.flagged)} (${formatPercent(flaggedRate)})`
+      `${formatNumber(stats.flagged)} (${formatPercent(flaggedRate)})`
     );
-    const missingStat = createDatasetStat("座標欠損", formatNumber(dataset.stats.missingCoords));
-    summary.append(bridgeCountStat, flaggedStat, missingStat);
+    summary.append(bridgeCountStat, flaggedStat);
 
     item.append(header, summary);
     return item;
@@ -3386,9 +3432,8 @@ function resolvePcPostKey(value) {
     });
   }
 
-  function getFilteredRecords(options = {}) {
+  function createRecordFilterPredicate(options = {}) {
     const { skipCulvertFilter = false } = options;
-    const activeDatasetIds = new Set(state.datasets.filter((dataset) => dataset.active).map((dataset) => dataset.id));
     const {
       bridgeTypes,
       inspectionLevels,
@@ -3413,40 +3458,55 @@ function resolvePcPostKey(value) {
     } = state.filters;
     const specYearFilterActive = specYears.size > 0;
     const culvertFilterEnabled = !skipCulvertFilter && state.filters.excludeCulvert;
+    return (record) => {
+      if (!bridgeTypes.has(record.bridgeType)) return false;
+      if (record.bridgeType === "PC橋") {
+        const tensionKey = resolvePcTensionKey(record.pcTensionType);
+        if (!pcTension.has(tensionKey)) return false;
+        if (tensionKey === "ポステン") {
+          const postKey = resolvePcPostKey(record.pcPostCategory);
+          if (!pcPost.has(postKey)) return false;
+        }
+      }
+      if (!inspectionLevels.has(record.inspectionLevel)) return false;
+      if (culvertFilterEnabled && record.isCulvert) return false;
+      if (!managementOffices.has(getManagementOfficeLabel(record))) return false;
+      if (!routeNames.has(getRouteNameLabel(record))) return false;
+      if (!municipalities.has(getMunicipalityLabel(record))) return false;
+      const specYearValue = getRecordSpecYearValue(record, useSpecYearInference) || SPEC_YEAR_UNKNOWN;
+      if (specYearFilterActive && !specYears.has(specYearValue)) return false;
+      if (!crossingTypes.has(record.crossingType)) return false;
+      if (!importanceLevels.has(record.importanceLevel)) return false;
+      const builtYear = record.builtYear;
+      const builtYearRangeActive = builtYearMin !== null || builtYearMax !== null;
+      const builtYearPasses = passesNumericRange(builtYear, builtYearMin, builtYearMax);
+      if (!builtYearPasses) {
+        const allowUnknownBuiltYear =
+          includeUnknownBuiltYear && builtYearRangeActive && !Number.isFinite(builtYear);
+        if (!allowUnknownBuiltYear) return false;
+      }
+      if (!passesNumericRange(record.bridgeLengthM, lengthMin, lengthMax)) return false;
+      if (!passesNumericRange(record.spans, spanCountMin, spanCountMax)) return false;
+      if (!passesNumericRange(record.spanLengthM, spanLengthMin, spanLengthMax)) return false;
+      return true;
+    };
+  }
+
+  function getFilteredRecords(options = {}) {
+    const { datasetIds = null, ignoreDatasetActive = false } = options;
+    const allowedDatasetIds = datasetIds ? new Set(datasetIds) : null;
+    const activeDatasetIds = ignoreDatasetActive
+      ? null
+      : new Set(state.datasets.filter((dataset) => dataset.active).map((dataset) => dataset.id));
+    const passesFilters = createRecordFilterPredicate(options);
     const records = [];
     state.datasets.forEach((dataset) => {
-      if (!activeDatasetIds.has(dataset.id)) return;
+      if (allowedDatasetIds && !allowedDatasetIds.has(dataset.id)) return;
+      if (activeDatasetIds && !activeDatasetIds.has(dataset.id)) return;
       dataset.records.forEach((record) => {
-        if (!bridgeTypes.has(record.bridgeType)) return;
-        if (record.bridgeType === "PC橋") {
-          const tensionKey = resolvePcTensionKey(record.pcTensionType);
-          if (!pcTension.has(tensionKey)) return;
-          if (tensionKey === "ポステン") {
-            const postKey = resolvePcPostKey(record.pcPostCategory);
-            if (!pcPost.has(postKey)) return;
-          }
+        if (passesFilters(record)) {
+          records.push(record);
         }
-        if (!inspectionLevels.has(record.inspectionLevel)) return;
-        if (culvertFilterEnabled && record.isCulvert) return;
-        if (!managementOffices.has(getManagementOfficeLabel(record))) return;
-        if (!routeNames.has(getRouteNameLabel(record))) return;
-        if (!municipalities.has(getMunicipalityLabel(record))) return;
-        const specYearValue = getRecordSpecYearValue(record, useSpecYearInference) || SPEC_YEAR_UNKNOWN;
-        if (specYearFilterActive && !specYears.has(specYearValue)) return;
-        if (!crossingTypes.has(record.crossingType)) return;
-        if (!importanceLevels.has(record.importanceLevel)) return;
-        const builtYear = record.builtYear;
-        const builtYearRangeActive = builtYearMin !== null || builtYearMax !== null;
-        const builtYearPasses = passesNumericRange(builtYear, builtYearMin, builtYearMax);
-        if (!builtYearPasses) {
-          const allowUnknownBuiltYear =
-            includeUnknownBuiltYear && builtYearRangeActive && !Number.isFinite(builtYear);
-          if (!allowUnknownBuiltYear) return;
-        }
-        if (!passesNumericRange(record.bridgeLengthM, lengthMin, lengthMax)) return;
-        if (!passesNumericRange(record.spans, spanCountMin, spanCountMax)) return;
-        if (!passesNumericRange(record.spanLengthM, spanLengthMin, spanLengthMax)) return;
-        records.push(record);
       });
     });
     return records;

@@ -468,6 +468,11 @@ img {
   font-size: 0.9rem;
 }
 
+.dataset-scope-toggle {
+  width: fit-content;
+  font-size: 0.9rem;
+}
+
 .dataset-empty[hidden] {
   display: none;
 }
@@ -624,6 +629,7 @@ img {
   margin: 0;
   display: flex;
   gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .dataset-summary > .dataset-stat {
