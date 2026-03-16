@@ -251,6 +251,7 @@ const PC_POST_SEGMENTS = [
     routeFilterList: document.querySelector("[data-filter-route-list]"),
     municipalityFilter: document.querySelector("[data-filter-municipality]"),
     municipalityFilterSearch: document.querySelector("[data-filter-municipality-search]"),
+    municipalityFilterSelectDatasets: document.querySelector("[data-filter-municipality-select-datasets]"),
     municipalityFilterSelectAll: document.querySelector("[data-filter-municipality-select-all]"),
     municipalityFilterClear: document.querySelector("[data-filter-municipality-clear]"),
     municipalityFilterCount: document.querySelector("[data-filter-municipality-count]"),
@@ -1073,6 +1074,14 @@ const PC_POST_SEGMENTS = [
     return options.filter((value) => normalizeForMatch(value).includes(query));
   }
 
+  function getLoadedDatasetMunicipalityOptions(options) {
+    if (!options.length || !state.datasets.length) return [];
+    const datasetLabels = new Set(
+      state.datasets.map((dataset) => normalizeForMatch(dataset.label || "")).filter(Boolean)
+    );
+    return options.filter((value) => datasetLabels.has(normalizeForMatch(value)));
+  }
+
   function updateMunicipalityFilterCount(options) {
     const count = elements.municipalityFilterCount;
     if (!count) return;
@@ -1100,6 +1109,9 @@ const PC_POST_SEGMENTS = [
     }
     if (elements.municipalityFilterSelectAll) {
       elements.municipalityFilterSelectAll.disabled = !options.length;
+    }
+    if (elements.municipalityFilterSelectDatasets) {
+      elements.municipalityFilterSelectDatasets.disabled = !getLoadedDatasetMunicipalityOptions(options).length;
     }
     if (elements.municipalityFilterClear) {
       elements.municipalityFilterClear.disabled = !options.length;
@@ -2040,6 +2052,16 @@ const PC_POST_SEGMENTS = [
     }
     elements.municipalityFilterSearch?.addEventListener("input", () => {
       renderMunicipalityOptions(state.filterOptions?.municipalities ?? []);
+    });
+    elements.municipalityFilterSelectDatasets?.addEventListener("click", () => {
+      const options = state.filterOptions?.municipalities ?? [];
+      const matched = getLoadedDatasetMunicipalityOptions(options);
+      if (!matched.length) return;
+      const next = new Set(state.filters.municipalities);
+      matched.forEach((value) => next.add(value));
+      state.filters.municipalities = next;
+      renderMunicipalityOptions(options);
+      refreshAll();
     });
     elements.municipalityFilterSelectAll?.addEventListener("click", () => {
       const options = state.filterOptions?.municipalities ?? [];
