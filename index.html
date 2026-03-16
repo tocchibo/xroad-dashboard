@@ -1945,7 +1945,27 @@
                   <span>フィルタ後の値を表示</span>
                 </label>
                 <p class="dataset-empty" data-dataset-empty>dataset はまだありません。CSV を取り込むとここに一覧が表示されます。</p>
-                <ul class="dataset-list" data-dataset-list aria-live="polite"></ul>
+                <div class="dataset-table-wrap" data-dataset-table-wrap hidden>
+                  <table class="dataset-table">
+                    <colgroup>
+                      <col class="dataset-col-name" />
+                      <col class="dataset-col-count" />
+                      <col class="dataset-col-flagged" />
+                      <col class="dataset-col-visibility" />
+                      <col class="dataset-col-remove" />
+                    </colgroup>
+                    <thead>
+                      <tr>
+                        <th scope="col">自治体名</th>
+                        <th scope="col">橋梁数</th>
+                        <th scope="col">Ⅲ/Ⅳ</th>
+                        <th scope="col">表示</th>
+                        <th scope="col">削除</th>
+                      </tr>
+                    </thead>
+                    <tbody data-dataset-list aria-live="polite"></tbody>
+                  </table>
+                </div>
               </section>
             </div>
           </section>

@@ -215,12 +215,13 @@ const PC_POST_SEGMENTS = [
       sortKey: null,
       sortDirection: "asc",
     },
-    datasetCardShowFilteredStats: false,
+    datasetListShowFilteredStats: false,
   };
 
   const elements = {
     datasetList: document.querySelector("[data-dataset-list]"),
     datasetEmpty: document.querySelector("[data-dataset-empty]"),
+    datasetTableWrap: document.querySelector("[data-dataset-table-wrap]"),
     datasetStatsToggle: document.querySelector("[data-dataset-stats-toggle]"),
     datasetToggleList: document.querySelector("[data-dataset-toggle-list]"),
     datasetToggleEmpty: document.querySelector("[data-dataset-toggle-empty]"),
@@ -387,7 +388,7 @@ const PC_POST_SEGMENTS = [
     bindRangeControl();
     bindSelectControls();
     bindCulvertFilter();
-    bindDatasetCardStatsToggle();
+    bindDatasetListStatsToggle();
     bindAdvancedFilters();
     bindMapControls();
     bindClusterControls();
@@ -1892,13 +1893,13 @@ const PC_POST_SEGMENTS = [
     });
   }
 
-  function bindDatasetCardStatsToggle() {
+  function bindDatasetListStatsToggle() {
     const checkbox = elements.datasetStatsToggle;
     if (!checkbox) return;
-    checkbox.checked = state.datasetCardShowFilteredStats;
+    checkbox.checked = state.datasetListShowFilteredStats;
     checkbox.disabled = state.datasets.length === 0;
     checkbox.addEventListener("change", (event) => {
-      state.datasetCardShowFilteredStats = Boolean(event.currentTarget.checked);
+      state.datasetListShowFilteredStats = Boolean(event.currentTarget.checked);
       updateDatasetList();
     });
   }
@@ -2470,9 +2471,12 @@ function resolvePcPostKey(value) {
 
   function updateDatasetList() {
     const hasDatasets = state.datasets.length > 0;
-    const cardStatsMap = getDatasetCardStatsMap();
+    const statsMap = getDatasetListStatsMap();
     if (elements.datasetEmpty) {
       elements.datasetEmpty.hidden = hasDatasets;
+    }
+    if (elements.datasetTableWrap) {
+      elements.datasetTableWrap.hidden = !hasDatasets;
     }
     if (elements.datasetStatsToggle) {
       elements.datasetStatsToggle.disabled = !hasDatasets;
@@ -2481,16 +2485,16 @@ function resolvePcPostKey(value) {
       elements.datasetList.innerHTML = "";
       if (hasDatasets) {
         state.datasets.forEach((dataset) => {
-          const stats = cardStatsMap.get(dataset.id);
-          elements.datasetList.appendChild(createDatasetCard(dataset, stats));
+          const stats = statsMap.get(dataset.id);
+          elements.datasetList.appendChild(createDatasetRow(dataset, stats));
         });
       }
     }
   }
 
-  function getDatasetCardStatsMap() {
+  function getDatasetListStatsMap() {
     const statsMap = new Map();
-    if (!state.datasetCardShowFilteredStats) {
+    if (!state.datasetListShowFilteredStats) {
       state.datasets.forEach((dataset) => {
         statsMap.set(dataset.id, {
           bridgeCount: dataset.stats.bridgeCount,
@@ -2517,18 +2521,7 @@ function resolvePcPostKey(value) {
   }
 
 
-  function createDatasetCard(dataset, stats) {
-    const item = document.createElement("li");
-    item.className = "dataset-item";
-    if (!dataset.active) item.classList.add("is-muted");
-
-    const header = document.createElement("div");
-    header.className = "dataset-header";
-
-    const title = document.createElement("p");
-    title.className = "dataset-name";
-    title.textContent = dataset.label;
-
+  function createDatasetVisibilityToggle(dataset) {
     const toggle = document.createElement("label");
     toggle.className = "switch";
     const checkbox = document.createElement("input");
@@ -2544,46 +2537,54 @@ function resolvePcPostKey(value) {
     srOnly.className = "sr-only";
     srOnly.textContent = `${dataset.label} を表示する`;
     toggle.append(checkbox, slider, srOnly);
+    return toggle;
+  }
 
-    const actions = document.createElement("div");
-    actions.className = "dataset-actions";
-    actions.appendChild(toggle);
-
+  function createDatasetRemoveButton(dataset) {
     const removeButton = document.createElement("button");
     removeButton.type = "button";
     removeButton.className = "dataset-remove";
     removeButton.setAttribute("aria-label", `${dataset.label} を一覧から削除する`);
-    removeButton.innerHTML = "&times;";
+    removeButton.textContent = "×";
     removeButton.addEventListener("click", () => removeDataset(dataset.id));
-    actions.appendChild(removeButton);
-
-    header.append(title, actions);
-
-    const summary = document.createElement("div");
-    summary.className = "dataset-summary";
-    const bridgeCountStat = createDatasetStat("橋梁数", formatNumber(stats.bridgeCount));
-    const flaggedRate = stats.bridgeCount ? stats.flagged / stats.bridgeCount : 0;
-    const flaggedStat = createDatasetStat(
-      "III/IV",
-      `${formatNumber(stats.flagged)} (${formatPercent(flaggedRate)})`
-    );
-    summary.append(bridgeCountStat, flaggedStat);
-
-    item.append(header, summary);
-    return item;
+    return removeButton;
   }
 
-  function createDatasetStat(label, value) {
-    const wrapper = document.createElement("div");
-    wrapper.className = "dataset-stat";
-    const labelEl = document.createElement("p");
-    labelEl.className = "dataset-stat-label";
-    labelEl.textContent = label;
-    const valueEl = document.createElement("p");
-    valueEl.className = "dataset-stat-value";
-    valueEl.textContent = value;
-    wrapper.append(labelEl, valueEl);
-    return wrapper;
+  function createDatasetRow(dataset, stats) {
+    const row = document.createElement("tr");
+    row.className = "dataset-row";
+    if (!dataset.active) row.classList.add("is-muted");
+
+    const nameCell = document.createElement("th");
+    nameCell.scope = "row";
+    nameCell.className = "dataset-name-cell";
+    nameCell.textContent = dataset.label;
+
+    const bridgeCountCell = document.createElement("td");
+    bridgeCountCell.className = "dataset-number-cell";
+    bridgeCountCell.textContent = formatNumber(stats.bridgeCount);
+
+    const flaggedCell = document.createElement("td");
+    flaggedCell.className = "dataset-flagged-cell";
+    const flaggedRate = stats.bridgeCount ? stats.flagged / stats.bridgeCount : 0;
+    const flaggedMain = document.createElement("span");
+    flaggedMain.className = "dataset-flagged-main";
+    flaggedMain.textContent = formatNumber(stats.flagged);
+    const flaggedRateText = document.createElement("span");
+    flaggedRateText.className = "dataset-flagged-rate";
+    flaggedRateText.textContent = ` (${formatPercent(flaggedRate)})`;
+    flaggedCell.append(flaggedMain, flaggedRateText);
+
+    const visibilityCell = document.createElement("td");
+    visibilityCell.className = "dataset-control-cell";
+    visibilityCell.appendChild(createDatasetVisibilityToggle(dataset));
+
+    const removeCell = document.createElement("td");
+    removeCell.className = "dataset-control-cell";
+    removeCell.appendChild(createDatasetRemoveButton(dataset));
+
+    row.append(nameCell, bridgeCountCell, flaggedCell, visibilityCell, removeCell);
+    return row;
   }
 
   function removeDataset(datasetId) {
